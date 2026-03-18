@@ -226,12 +226,12 @@ module riscv_CoreDpath
   wire [31:0] branch_targ_Dhl;
   wire [31:0] jump_targ_Dhl;
 
-  assign pcA_Dhl = 
+  assign pcA_Dhl = // first one into A, second into B
     (steering_mux_sel_Dhl == 1'b0) ? pc_Dhl :
     (steering_mux_sel_Dhl == 1'b1) ? pc_plus4_Dhl :
                                      32'bx;
 
-  assign pcA_plus4_Dhl =
+  assign pcA_plus4_Dhl = // we've pushed one out of the decode
     (steering_mux_sel_Dhl == 1'b0) ? pc_plus4_Dhl :
     (steering_mux_sel_Dhl == 1'b1) ? pc_plus8_Dhl :
                                      32'bx;
