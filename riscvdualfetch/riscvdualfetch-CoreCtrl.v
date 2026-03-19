@@ -50,10 +50,10 @@ module riscv_CoreCtrl
   output  [1:0] opB0_mux_sel_Dhl,
   output  [3:0] opB1_byp_mux_sel_Dhl,
   output  [2:0] opB1_mux_sel_Dhl,
-  output [31:0] instA_Dhl, 
-  output [31:0] instB_Dhl,
-  output  [3:0] aluA_fn_X0hl,
-  output  [3:0] aluB_fn_X0hl,
+  output reg [31:0] instA_Dhl, 
+  output reg [31:0] instB_Dhl,
+  output reg [3:0] aluA_fn_X0hl,
+  output reg [3:0] aluB_fn_X0hl,
   output  [2:0] muldivreq_msg_fn_Dhl,
   output        muldivreq_val,
   input         muldivreq_rdy,
@@ -75,8 +75,8 @@ module riscv_CoreCtrl
   output        stall_X0hl,
   output        stall_X1hl,
   output        stall_X2hl,
-  output reg       stall_X3hl,
-  output reg       stall_Whl,
+  output        stall_X3hl,
+  output        stall_Whl,
 
   // Control Signals (dpath->ctrl)
 
@@ -579,11 +579,10 @@ module riscv_CoreCtrl
   // Steering Logic
 
   // TODO: generate your steering signal here!
-  reg stall_0_structural_Dhl = 0'b0; // stall 0D for structural hazard in D stage
-  reg stall_1_structural_Dhl = 0'b0; // stall 1D for structural hazard in D stage
+  reg stall_0_structural_Dhl = 1'b0; // stall 0D for structural hazard in D stage
+  reg stall_1_structural_Dhl = 1'b0; // stall 1D for structural hazard in D stage
 
-  always @(*)
-  begin
+  always @(*) begin
     // TODO UDPATE SCOREBOARD
     if ( inst_issued_X0hl == 1'b1) begin // we just issued an instrcution using the previous steering_mux_sel, now switch it to the other for the next instruction
         steering_mux_sel_Dhl <= ~steering_mux_sel_Dhl;
@@ -606,11 +605,11 @@ module riscv_CoreCtrl
   end
 
   
-  assign opA0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_OPA_SEL] : cs1[`RISCV_INST_MSG_OPA_SEL];
-  assign opA1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_OPB_SEL] : cs1[`RISCV_INST_MSG_OPB_SEL];
+  assign opA0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
+  assign opA1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_OP1_SEL] : cs1[`RISCV_INST_MSG_OP1_SEL];
 
-  assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OPA_SEL] : cs1[`RISCV_INST_MSG_OPA_SEL];
-  assign opB1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OPB_SEL] : cs1[`RISCV_INST_MSG_OPB_SEL];
+  assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
+  assign opB1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP1_SEL] : cs1[`RISCV_INST_MSG_OP1_SEL];
 
   wire aluA_fn_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
   wire aluB_fn_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
@@ -620,10 +619,10 @@ module riscv_CoreCtrl
   wire rfB_wen_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WEN] : cs1[`RISCV_INST_MSG_RF_WEN];
   wire rfB_waddr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
 
-  wire rsA0_en_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RS_EN] : cs1[`RISCV_INST_MSG_RS_EN];
-  wire rsA1_en_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RT_EN] : cs1[`RISCV_INST_MSG_RT_EN];
-  wire rsB0_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS_EN] : cs1[`RISCV_INST_MSG_RS_EN];
-  wire rsB1_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RT_EN] : cs1[`RISCV_INST_MSG_RT_EN];
+  wire rsA0_en_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RS1_EN] : cs1[`RISCV_INST_MSG_RS1_EN];
+  wire rsA1_en_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RS2_EN] : cs1[`RISCV_INST_MSG_RS2_EN];
+  wire rsB0_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS1_EN] : cs1[`RISCV_INST_MSG_RS1_EN];
+  wire rsB1_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS2_EN] : cs1[`RISCV_INST_MSG_RS2_EN];
 
   wire rsA0_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
   wire rsA1_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
@@ -631,6 +630,12 @@ module riscv_CoreCtrl
   wire rsB1_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
 
 
+  // We actually still need these for the stalling logic
+  wire [4:0] rs10_addr_Dhl  = inst0_rs1_Dhl;
+  wire [4:0] rs20_addr_Dhl  = inst0_rs2_Dhl;
+
+  wire [4:0] rs11_addr_Dhl  = inst1_rs1_Dhl;
+  wire [4:0] rs21_addr_Dhl  = inst1_rs2_Dhl;
 
   // Jump and Branch Controls
 
@@ -645,13 +650,13 @@ module riscv_CoreCtrl
 
   // For Part 2 and Optionaly Part 1, replace the following control logic with a scoreboard
   // see if pending instructions and see if its in the right spot for bypassing, and if so, set the bypass signal for that instruction
-  reg [6:0] scoreboard [31:0] // scoreboard (index by register, first bit is pending, second bit is functional unit, last 4 bits are stage in mem unit)
+  reg [6:0] scoreboard [31:0]; // scoreboard (index by register, first bit is pending, second bit is functional unit, last 4 bits are stage in mem unit)
 
     // scoreboard logic
-    integer i;
+  integer i;
     always @ (posedge clk) begin
         if (reset) begin 
-            for (i = 0; i < 32; i++) begin
+            for (i = 0; i < 32; i = i + 1) begin
                 scoreboard[i][6:0] <= 7'b0; // clear all bits
             end
         end
@@ -666,7 +671,7 @@ module riscv_CoreCtrl
                                 (inst_val_X0hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X0hl : rfB_wen_X0hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X0hl : rfB_waddr_X0hl))) ||
                                 (inst_val_X1hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X1hl : rfB_wen_X1hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X1hl : rfB_waddr_X1hl))) ||
                                 (inst_val_X2hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X2hl : rfB_wen_X2hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X2hl : rfB_waddr_X2hl))) ||
-                                (inst_val_X3hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X3hl : rfB_wen_X3hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X3hl : rfB_waddr_X3hl)));
+                                (inst_val_X3hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X3hl : rfB_wen_X3hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X3hl : rfB_waddr_X3hl)))
                                 // (inst_val_Whl && rf0_wen_Whl && (i == rf0_waddr_Whl))
                                 ? 1'b1 : 1'b0; // set pending bit
         end
@@ -810,30 +815,34 @@ module riscv_CoreCtrl
         : (scoreboard[rsA0_addr_Dhl][3]) ? am_AX1_byp
         : (scoreboard[rsA0_addr_Dhl][2]) ? am_AX2_byp
         : (scoreboard[rsA0_addr_Dhl][1]) ? am_AX3_byp
-        : (scoreboard[rsA0_addr_Dhl][0])  ? am_AW_byp
+        : (scoreboard[rsA0_addr_Dhl][0])  ? am_AW_byp :
+        am_r0
     ) : (
         (scoreboard[rsA0_addr_Dhl][4]) ? am_BX0_byp
         : (scoreboard[rsA0_addr_Dhl][3]) ? am_BX1_byp
         : (scoreboard[rsA0_addr_Dhl][2]) ? am_BX2_byp
         : (scoreboard[rsA0_addr_Dhl][1]) ? am_BX3_byp
         : (scoreboard[rsA0_addr_Dhl][0])  ? am_BW_byp
-    )
+        : am_r0
+    );
     
     assign opA1_byp_mux_sel_Dhl
-        = (!rsA1_en_Dhl || (rsA1_addr_Dhl == 5'd0) || !scoreboard[rsA1_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
+        = (!rsA1_en_Dhl || (rsA1_addr_Dhl == 5'd0) || !scoreboard[rsA1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
         : (scoreboard[rsA1_addr_Dhl][5]) ? (
-            (scoreboard[rsA1_addr_Dhl][4]) ? am_AX0_byp
-            : (scoreboard[rsA1_addr_Dhl][3]) ? am_AX1_byp
-            : (scoreboard[rsA1_addr_Dhl][2]) ? am_AX2_byp
-            : (scoreboard[rsA1_addr_Dhl][1]) ? am_AX3_byp
-            : (scoreboard[rsA1_addr_Dhl][0])  ? am_AW_byp
+            (scoreboard[rsA1_addr_Dhl][4]) ? bm_AX0_byp
+            : (scoreboard[rsA1_addr_Dhl][3]) ? bm_AX1_byp
+            : (scoreboard[rsA1_addr_Dhl][2]) ? bm_AX2_byp
+            : (scoreboard[rsA1_addr_Dhl][1]) ? bm_AX3_byp
+            : (scoreboard[rsA1_addr_Dhl][0])  ? bm_AW_byp
+            : bm_r1
         ) : (
-            (scoreboard[rsA1_addr_Dhl][4]) ? am_BX0_byp
-            : (scoreboard[rsA1_addr_Dhl][3]) ? am_BX1_byp
-            : (scoreboard[rsA1_addr_Dhl][2]) ? am_BX2_byp
-            : (scoreboard[rsA1_addr_Dhl][1]) ? am_BX3_byp
-            : (scoreboard[rsA1_addr_Dhl][0])  ? am_BW_byp
-        )
+            (scoreboard[rsA1_addr_Dhl][4]) ? bm_BX0_byp
+            : (scoreboard[rsA1_addr_Dhl][3]) ? bm_BX1_byp
+            : (scoreboard[rsA1_addr_Dhl][2]) ? bm_BX2_byp
+            : (scoreboard[rsA1_addr_Dhl][1]) ? bm_BX3_byp
+            : (scoreboard[rsA1_addr_Dhl][0])  ? bm_BW_byp
+            : bm_r1
+        );
 
     assign opB0_byp_mux_sel_Dhl
     = (!rsB0_en_Dhl || (rsB0_addr_Dhl == 5'd0) || !scoreboard[rsB0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
@@ -843,29 +852,33 @@ module riscv_CoreCtrl
             : (scoreboard[rsB0_addr_Dhl][2]) ? am_AX2_byp
             : (scoreboard[rsB0_addr_Dhl][1]) ? am_AX3_byp
             : (scoreboard[rsB0_addr_Dhl][0])  ? am_AW_byp
+            : am_r0
         ) : (
             (scoreboard[rsB0_addr_Dhl][4]) ? am_BX0_byp
             : (scoreboard[rsB0_addr_Dhl][3]) ? am_BX1_byp
             : (scoreboard[rsB0_addr_Dhl][2]) ? am_BX2_byp
             : (scoreboard[rsB0_addr_Dhl][1]) ? am_BX3_byp
             : (scoreboard[rsB0_addr_Dhl][0])  ? am_BW_byp
-        )
+            : am_r0
+        );
 
     assign opB1_byp_mux_sel_Dhl
-    = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
+    = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
         : (scoreboard[rsB1_addr_Dhl][5]) ? (
-            (scoreboard[rsB1_addr_Dhl][4]) ? am_AX0_byp
-            : (scoreboard[rsB1_addr_Dhl][3]) ? am_AX1_byp
-            : (scoreboard[rsB1_addr_Dhl][2]) ? am_AX2_byp
-            : (scoreboard[rsB1_addr_Dhl][1]) ? am_AX3_byp
-            : (scoreboard[rsB1_addr_Dhl][0])  ? am_AW_byp
+            (scoreboard[rsB1_addr_Dhl][4]) ? bm_AX0_byp
+            : (scoreboard[rsB1_addr_Dhl][3]) ? bm_AX1_byp
+            : (scoreboard[rsB1_addr_Dhl][2]) ? bm_AX2_byp
+            : (scoreboard[rsB1_addr_Dhl][1]) ? bm_AX3_byp
+            : (scoreboard[rsB1_addr_Dhl][0])  ? bm_AW_byp
+            : bm_r1
         ) : (
-            (scoreboard[rsB1_addr_Dhl][4]) ? am_BX0_byp
-            : (scoreboard[rsB1_addr_Dhl][3]) ? am_BX1_byp
-            : (scoreboard[rsB1_addr_Dhl][2]) ? am_BX2_byp
-            : (scoreboard[rsB1_addr_Dhl][1]) ? am_BX3_byp
-            : (scoreboard[rsB1_addr_Dhl][0])  ? am_BW_byp
-        )
+            (scoreboard[rsB1_addr_Dhl][4]) ? bm_BX0_byp
+            : (scoreboard[rsB1_addr_Dhl][3]) ? bm_BX1_byp
+            : (scoreboard[rsB1_addr_Dhl][2]) ? bm_BX2_byp
+            : (scoreboard[rsB1_addr_Dhl][1]) ? bm_BX3_byp
+            : (scoreboard[rsB1_addr_Dhl][0])  ? bm_BW_byp
+            : bm_r1
+        );
 //   assign op01_byp_mux_sel_Dhl
 //     = (rs20_AX0_byp_Dhl) ? bm_AX0_byp
 //     : (rs20_AX1_byp_Dhl) ? bm_AX1_byp
@@ -957,25 +970,25 @@ module riscv_CoreCtrl
               (scoreboard[rs10_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs10_addr_Dhl][3] && is_muldiv_X1hl) ||
               (scoreboard[rs10_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs10_addr_Dhl][1] && is_muldiv_X3hl) ||
+              (scoreboard[rs10_addr_Dhl][1] && is_muldiv_X3hl)
             ) ) || (
               // Hazard involving rs2
               scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
               (scoreboard[rs20_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs20_addr_Dhl][3] && is_muldiv_X1hl) ||
               (scoreboard[rs20_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs20_addr_Dhl][1] && is_muldiv_X3hl) || ) );
+              (scoreboard[rs20_addr_Dhl][1] && is_muldiv_X3hl) ) );
 
   wire stall_0_load_use_Dhl =   (  
               // Hazard involving rs1
               scoreboard[rs10_addr_Dhl][6] && !scoreboard[rs10_addr_Dhl][5] && ( 
               (scoreboard[rs10_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs10_addr_Dhl][3] && is_load_X1hl) ||
+              (scoreboard[rs10_addr_Dhl][3] && is_load_X1hl)
             ) ) || (
               // Hazard involving rs2
               scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
               (scoreboard[rs20_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs20_addr_Dhl][3] && is_load_X1hl) || ) );
+              (scoreboard[rs20_addr_Dhl][3] && is_load_X1hl) ) );
 
   wire stall_1_muldiv_use_Dhl = (
               // Hazard involving rs1
@@ -983,25 +996,25 @@ module riscv_CoreCtrl
               (scoreboard[rs11_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs11_addr_Dhl][3] && is_muldiv_X1hl) ||
               (scoreboard[rs11_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs11_addr_Dhl][1] && is_muldiv_X3hl) ||
+              (scoreboard[rs11_addr_Dhl][1] && is_muldiv_X3hl)
             ) ) || (
               // Hazard involving rs2
               scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
               (scoreboard[rs21_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs21_addr_Dhl][3] && is_muldiv_X1hl) ||
               (scoreboard[rs21_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs21_addr_Dhl][1] && is_muldiv_X3hl) || ) );
+              (scoreboard[rs21_addr_Dhl][1] && is_muldiv_X3hl) ) );
 
   wire stall_1_load_use_Dhl =   (  
               // Hazard involving rs1
               scoreboard[rs11_addr_Dhl][6] && !scoreboard[rs11_addr_Dhl][5] && ( 
               (scoreboard[rs11_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs11_addr_Dhl][3] && is_load_X1hl) ||
+              (scoreboard[rs11_addr_Dhl][3] && is_load_X1hl)
             ) ) || (
               // Hazard involving rs2
               scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
               (scoreboard[rs21_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs21_addr_Dhl][3] && is_load_X1hl) || ) );
+              (scoreboard[rs21_addr_Dhl][3] && is_load_X1hl) ) );
 
 
   // wire stall_0_muldiv_use_Dhl = inst_val_Dhl && (
@@ -1089,22 +1102,28 @@ module riscv_CoreCtrl
 
   // Aggregate Stall Signal
 
-  assign stall_Dhl = (stall_X0hl || stall_0_muldiv_use_Dhl || stall_0_load_use_Dhl); // NOTE THINK ABOUT ADDING 1 for part 2
-  assign stall_0_Dhl = (stall_0_muldiv_use_Dhl || stall_0_load_use_Dhl);
-  assign stall_1_Dhl = (stall_1_muldiv_use_Dhl || stall_1_load_use_Dhl);
+  // Stall for muldiv use or load use if the instruction issuing in this cycle has a hazard
+  // stall A signal determines if we really need to stall
+  wire stallA_Dhl = (stall_0_Dhl && !steering_mux_sel_Dhl) || (stall_1_Dhl && steering_mux_sel_Dhl);
+  wire stallB_Dhl = (stall_1_Dhl && !steering_mux_sel_Dhl) || (stall_0_Dhl && steering_mux_sel_Dhl);
+
+
+  assign stall_Dhl = (stall_X0hl || stallA_Dhl); // NOTE THINK ABOUT ADDING 1 for part 2
+  wire stall_0_Dhl = (stall_0_muldiv_use_Dhl || stall_0_load_use_Dhl);
+  wire stall_1_Dhl = (stall_1_muldiv_use_Dhl || stall_1_load_use_Dhl);
 
   // Next bubble bit
-  // Split into bubbleA and bubbleB (allows us to invalidate the B pipe instruction)
+  // Split into bubble and bubbleB (allows us to invalidate the B pipe instruction)
 
-  wire bubbleA_sel_Dhl  = ( squash_Dhl || stall_0_Dhl );
-  wire bubbleA_next_Dhl = ( !bubbleA_sel_Dhl ) ? bubble_Dhl
-                       : ( bubbleA_sel_Dhl )  ? 1'b1
+  wire bubble_sel_Dhl  = ( squash_Dhl || stallA_Dhl );
+  wire bubble_next_Dhl = ( !bubble_sel_Dhl ) ? bubble_Dhl
+                       : ( bubble_sel_Dhl )  ? 1'b1
                        :                       1'bx;
 
   wire bubbleB_Dhl = 1'b1; // Change for part 2
-  wire bubbleB_sel_Dhl = (squash_Dhl || stall_1_Dhl);
+  wire bubbleB_sel_Dhl = (squash_Dhl || stallB_Dhl);
   wire bubbleB_next_Dhl = ( !bubbleB_sel_Dhl ) ? bubbleB_Dhl
-                       : ( bubble_selB_Dhl )  ? 1'b1
+                       : ( bubbleB_sel_Dhl )  ? 1'b1
                        :                       1'bx;
 
 
@@ -1136,7 +1155,7 @@ module riscv_CoreCtrl
   reg [31:0] instA_X0hl;
   reg [31:0] instB_X0hl;
 
-  reg        bubbleA_X0hl;
+  reg        bubble_X0hl;
   reg        bubbleB_X0hl;
   reg       inst_issued_X0hl; // was an instruction just issues in the previous cycle
 
@@ -1145,7 +1164,7 @@ module riscv_CoreCtrl
 
   always @ ( posedge clk ) begin
     if ( reset ) begin
-      bubbleA_X0hl <= 1'b1;
+      bubble_X0hl <= 1'b1;
       bubbleB_X0hl <= 1'b1;
       inst_issued_X0hl <= 1'b0;
     end
@@ -1176,13 +1195,12 @@ module riscv_CoreCtrl
       instB_X0hl         <= instB_Dhl;
 
 
-      bubbleA_X0hl          <= bubbleA_next_Dhl;
+      bubble_X0hl          <= bubble_next_Dhl;
       bubbleB_X0hl          <= bubbleB_next_Dhl;
+    end
     else begin
         inst_issued_X0hl <= 1'b0;
     end
-    end
-
   end
 
   //----------------------------------------------------------------------
@@ -1191,7 +1209,7 @@ module riscv_CoreCtrl
 
   // Is the current stage valid?
 
-  wire inst_val_X0hl = ( !bubbleA_X0hl && !squash_X0hl );
+  wire inst_val_X0hl = ( !bubble_X0hl && !squash_X0hl );
   wire instB_val_X0hl = ( !bubbleB_X0hl && !squash_X0hl); 
   // Right now this is a dummy signal that routes to nothing, but we might need it in the future to help determine if inst is pending in pipe B in scoreboard
 
@@ -1249,9 +1267,9 @@ module riscv_CoreCtrl
 
   // Next bubble bit
 
-  wire bubbleA_sel_X0hl  = ( squash_X0hl || stall_X0hl );
-  wire bubbleA_next_X0hl = ( !bubbleA_sel_X0hl ) ? bubbleA_X0hl
-                       : ( bubbleA_sel_X0hl )  ? 1'b1
+  wire bubble_sel_X0hl  = ( squash_X0hl || stall_X0hl );
+  wire bubble_next_X0hl = ( !bubble_sel_X0hl ) ? bubble_X0hl
+                       : ( bubble_sel_X0hl )  ? 1'b1
                        :                       1'bx;
 
 
@@ -1279,7 +1297,7 @@ module riscv_CoreCtrl
   reg [31:0] instA_X1hl;
   reg [31:0] instB_X1hl;
 
-  reg        bubbleA_X1hl;
+  reg        bubble_X1hl;
   reg        bubbleB_X1hl;
 
   // Pipeline Controls
@@ -1288,7 +1306,7 @@ module riscv_CoreCtrl
     if ( reset ) begin
       dmemreq_val_X1hl <= 1'b0;
 
-      bubbleA_X1hl <= 1'b1;
+      bubble_X1hl <= 1'b1;
       bubbleB_X1hl <= 1'b1;
     end
     else if( !stall_X1hl ) begin
@@ -1309,7 +1327,7 @@ module riscv_CoreCtrl
       instA_X1hl         <= instA_X0hl;
       instB_X1hl         <= instB_X0hl;
 
-      bubbleA_X1hl           <= bubbleA_next_X0hl;
+      bubble_X1hl           <= bubble_next_X0hl;
       bubbleB_X1hl          <= bubbleB_next_X0hl;
     end
   end
@@ -1320,7 +1338,7 @@ module riscv_CoreCtrl
 
   // Is current stage valid?
 
-  wire inst_val_X1hl = ( !bubbleA_X1hl && !squash_X1hl );
+  wire inst_val_X1hl = ( !bubble_X1hl && !squash_X1hl );
   wire instB_val_X1hl = ( !bubbleB_X1hl && !squash_X1hl );
 
 
@@ -1348,9 +1366,9 @@ module riscv_CoreCtrl
 
   // Next bubble bit
 
-  wire bubbleA_sel_X1hl  = ( squash_X1hl || stall_X1hl );
-  wire bubbleA_next_X1hl = ( !bubbleA_sel_X1hl ) ? bubbleA_X1hl
-                       : ( bubbleA_sel_X1hl )  ? 1'b1
+  wire bubble_sel_X1hl  = ( squash_X1hl || stall_X1hl );
+  wire bubble_next_X1hl = ( !bubble_sel_X1hl ) ? bubble_X1hl
+                       : ( bubble_sel_X1hl )  ? 1'b1
                        :                       1'bx;
 
   wire bubbleB_sel_X1hl  = ( squash_X1hl || stall_X1hl );
@@ -1374,14 +1392,14 @@ module riscv_CoreCtrl
   reg [31:0] instA_X2hl;
   reg [31:0] instB_X2hl;
 
-  reg        bubbleA_X2hl;
+  reg        bubble_X2hl;
   reg        bubbleB_X2hl;
 
   // Pipeline Controls
 
   always @ ( posedge clk ) begin
     if ( reset ) begin
-      bubbleA_X2hl <= 1'b1;
+      bubble_X2hl <= 1'b1;
       bubbleB_X2hl <= 1'b1;
 
     end
@@ -1399,7 +1417,7 @@ module riscv_CoreCtrl
       instA_X2hl         <= instA_X1hl;
       instB_X2hl         <= instB_X1hl;
 
-      bubbleA_X2hl           <= bubbleA_next_X1hl;
+      bubble_X2hl           <= bubble_next_X1hl;
       bubbleB_X2hl           <= bubbleB_next_X1hl;
 
     end
@@ -1412,7 +1430,7 @@ module riscv_CoreCtrl
 
   // Is current stage valid?
 
-  wire inst_val_X2hl = ( !bubbleA_X2hl && !squash_X2hl );
+  wire inst_val_X2hl = ( !bubble_X2hl && !squash_X2hl );
   wire instB_val_X2hl = ( !bubbleB_X2hl && !squash_X2hl );
 
   // Dummy Squash Signal
@@ -1425,9 +1443,9 @@ module riscv_CoreCtrl
 
   // Next bubble bit
 
-  wire bubbleA_sel_X2hl  = ( squash_X2hl || stall_X2hl );
-  wire bubbleA_next_X2hl = ( !bubbleA_sel_X2hl ) ? bubbleA_X2hl
-                       : ( bubbleA_sel_X2hl )  ? 1'b1
+  wire bubble_sel_X2hl  = ( squash_X2hl || stall_X2hl );
+  wire bubble_next_X2hl = ( !bubble_sel_X2hl ) ? bubble_X2hl
+                       : ( bubble_sel_X2hl )  ? 1'b1
                        :                       1'bx;
 
 
@@ -1450,14 +1468,14 @@ module riscv_CoreCtrl
   reg [31:0] instA_X3hl;
   reg [31:0] instB_X3hl;
 
-  reg        bubbleA_X3hl;
+  reg        bubble_X3hl;
   reg        bubbleB_X3hl;
 
   // Pipeline Controls
 
   always @ ( posedge clk ) begin
     if ( reset ) begin
-      bubbleA_X3hl <= 1'b1;
+      bubble_X3hl <= 1'b1;
       bubbleB_X3hl <= 1'b1;
 
     end
@@ -1475,7 +1493,7 @@ module riscv_CoreCtrl
       instA_X3hl         <= instA_X2hl;
       instB_X3hl         <= instB_X2hl;
 
-      bubbleA_X3hl           <= bubbleA_next_X2hl;
+      bubble_X3hl           <= bubble_next_X2hl;
       bubbleB_X3hl           <= bubbleB_next_X2hl;
 
     end
@@ -1487,7 +1505,7 @@ module riscv_CoreCtrl
 
   // Is current stage valid?
 
-  wire inst_val_X3hl = ( !bubbleA_X3hl && !squash_X3hl );
+  wire inst_val_X3hl = ( !bubble_X3hl && !squash_X3hl );
   wire instB_val_X3hl = ( !bubbleB_X3hl && !squash_X3hl );
 
 
@@ -1501,9 +1519,9 @@ module riscv_CoreCtrl
 
   // Next bubble bit
 
-  wire bubbleA_sel_X3hl  = ( squash_X3hl || stall_X3hl );
-  wire bubbleA_next_X3hl = ( !bubbleA_sel_X3hl ) ? bubbleA_X3hl
-                       : ( bubbleA_sel_X3hl )  ? 1'b1
+  wire bubble_sel_X3hl  = ( squash_X3hl || stall_X3hl );
+  wire bubble_next_X3hl = ( !bubble_sel_X3hl ) ? bubble_X3hl
+                       : ( bubble_sel_X3hl )  ? 1'b1
                        :                       1'bx;
 
   wire bubbleB_sel_X3hl  = ( squash_X3hl || stall_X3hl );
@@ -1524,16 +1542,16 @@ module riscv_CoreCtrl
   // reg [4:0] rfB_waddr_Whl;
 
   reg [31:0] instA_Whl;
-  reg [31:0] instB_W1hl;
+  reg [31:0] instB_Whl;
 
-  reg        bubbleA_Whl;
+  reg        bubble_Whl;
   reg        bubbleB_Whl;
 
   // Pipeline Controls
 
   always @ ( posedge clk ) begin
     if ( reset ) begin
-      bubbleA_Whl <= 1'b1;
+      bubble_Whl <= 1'b1;
       bubbleB_Whl <= 1'b1;
 
     end
@@ -1548,7 +1566,7 @@ module riscv_CoreCtrl
       instA_Whl         <= instA_X3hl;
       instB_Whl         <= instB_X3hl;
 
-      bubbleA_Whl       <= bubbleA_next_X3hl;
+      bubble_Whl       <= bubble_next_X3hl;
       bubbleB_Whl       <= bubbleB_next_X3hl;
 
     end
@@ -1561,7 +1579,7 @@ module riscv_CoreCtrl
 
   // Is current stage valid?
 
-  wire inst_val_Whl = ( !bubbleA_Whl && !squash_Whl );
+  wire inst_val_Whl = ( !bubble_Whl && !squash_Whl );
   wire instB_val_Whl = ( !bubbleB_Whl && !squash_Whl );
 
 
@@ -1586,6 +1604,20 @@ module riscv_CoreCtrl
   reg [31:0] irA_debug;
   reg [31:0] irB_debug;
   reg        inst_val_debug;
+
+
+  wire [31:0] irA_X0hl = instA_X0hl;
+  wire [31:0] irA_X1hl = instA_X1hl;
+  wire [31:0] irA_X2hl = instA_X2hl;
+  wire [31:0] irA_X3hl = instA_X3hl;
+  wire [31:0] irA_Whl = instA_Whl;
+
+  wire [31:0] irB_X0hl = instB_X0hl;
+  wire [31:0] irB_X1hl = instB_X1hl;
+  wire [31:0] irB_X2hl = instB_X2hl;
+  wire [31:0] irB_X3hl = instB_X3hl;
+  wire [31:0] irB_Whl = instB_Whl;
+
 
   always @ ( posedge clk ) begin
     irA_debug       <= irA_Whl;
