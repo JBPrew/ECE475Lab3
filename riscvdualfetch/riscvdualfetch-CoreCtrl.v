@@ -611,23 +611,23 @@ module riscv_CoreCtrl
   assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
   assign opB1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP1_SEL] : cs1[`RISCV_INST_MSG_OP1_SEL];
 
-  wire aluA_fn_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
-  wire aluB_fn_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
+  wire [3:0] aluA_fn_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
+  wire [3:0] aluB_fn_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
 
   wire rfA_wen_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RF_WEN] : cs1[`RISCV_INST_MSG_RF_WEN];
-  wire rfA_waddr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
+  wire [4:0] rfA_waddr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
   wire rfB_wen_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WEN] : cs1[`RISCV_INST_MSG_RF_WEN];
-  wire rfB_waddr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
+  wire [4:0] rfB_waddr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
 
   wire rsA0_en_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RS1_EN] : cs1[`RISCV_INST_MSG_RS1_EN];
   wire rsA1_en_Dhl = (steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_RS2_EN] : cs1[`RISCV_INST_MSG_RS2_EN];
   wire rsB0_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS1_EN] : cs1[`RISCV_INST_MSG_RS1_EN];
   wire rsB1_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS2_EN] : cs1[`RISCV_INST_MSG_RS2_EN];
 
-  wire rsA0_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
-  wire rsA1_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
-  wire rsB0_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
-  wire rsB1_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
+  wire [4:0] rsA0_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
+  wire [4:0] rsA1_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
+  wire [4:0] rsB0_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
+  wire [4:0] rsB1_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
 
 
   // We actually still need these for the stalling logic
@@ -640,7 +640,7 @@ module riscv_CoreCtrl
   // Jump and Branch Controls
 
   wire       brj_taken_Dhl = ( inst_val_Dhl && ((steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_J_EN] : cs1[`RISCV_INST_MSG_J_EN]) );
-  wire [2:0] br_sel_Dhl    = (steering_mux_sel_Dhl == 1'b0)  ? cs0[`RISCV_INST_MSG_BR_SEL] : cs0[`RISCV_INST_MSG_BR_SEL];
+  wire [2:0] br_sel_Dhl    = (steering_mux_sel_Dhl == 1'b0)  ? cs0[`RISCV_INST_MSG_BR_SEL] : cs1[`RISCV_INST_MSG_BR_SEL];
 
   // PC Mux Select
 
@@ -651,6 +651,9 @@ module riscv_CoreCtrl
   // For Part 2 and Optionaly Part 1, replace the following control logic with a scoreboard
   // see if pending instructions and see if its in the right spot for bypassing, and if so, set the bypass signal for that instruction
   reg [6:0] scoreboard [31:0]; // scoreboard (index by register, first bit is pending, second bit is functional unit, last 4 bits are stage in mem unit)
+  // wire [6:0] scoreboard [31:0] = 
+  wire sb_debug = scoreboard[5'b0][6:0];
+
 
     // scoreboard logic
   integer i;
@@ -660,23 +663,24 @@ module riscv_CoreCtrl
                 scoreboard[i][6:0] <= 7'b0; // clear all bits
             end
         end
-        for (i = 0; i < 32; i++) begin
-            scoreboard[i][0] <= (!stall_X3hl) ? scoreboard[i][1] : scoreboard[i][0];
-            scoreboard[i][1] <= (!stall_X2hl) ? scoreboard[i][2] : scoreboard[i][1];
-            scoreboard[i][2] <= (!stall_X1hl) ? scoreboard[i][3] : scoreboard[i][2];
-            scoreboard[i][3] <= (!stall_X0hl) ? scoreboard[i][4] : scoreboard[i][3];
-            scoreboard[i][4] <= ((i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl)) && !stall_Dhl) ? 1'b1 : 1'b0;
-            // scoreboard[i][5] <= (steering_mux_sel_Dhl); // cant do this because it will update every scoreboard entry
-            scoreboard[i][6] <= (inst_val_Dhl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_Dhl : rfB_wen_Dhl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl))) ||
-                                (inst_val_X0hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X0hl : rfB_wen_X0hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X0hl : rfB_waddr_X0hl))) ||
-                                (inst_val_X1hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X1hl : rfB_wen_X1hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X1hl : rfB_waddr_X1hl))) ||
-                                (inst_val_X2hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X2hl : rfB_wen_X2hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X2hl : rfB_waddr_X2hl))) ||
-                                (inst_val_X3hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X3hl : rfB_wen_X3hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X3hl : rfB_waddr_X3hl)))
-                                // (inst_val_Whl && rf0_wen_Whl && (i == rf0_waddr_Whl))
-                                ? 1'b1 : 1'b0; // set pending bit
-        end
-        scoreboard[rfA_waddr_Dhl][5] <= steering_mux_sel_Dhl; // only update the scoreboard entry for the thing issuing in this cycle
-
+        // else begin
+        //   for (i = 0; i < 32; i++) begin
+        //       scoreboard[i][0] <= (!stall_X3hl) ? scoreboard[i][1] : scoreboard[i][0];
+        //       scoreboard[i][1] <= (!stall_X2hl) ? scoreboard[i][2] : scoreboard[i][1];
+        //       scoreboard[i][2] <= (!stall_X1hl) ? scoreboard[i][3] : scoreboard[i][2];
+        //       scoreboard[i][3] <= (!stall_X0hl) ? scoreboard[i][4] : scoreboard[i][3];
+        //       scoreboard[i][4] <= ((i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl)) && !stall_Dhl) ? 1'b1 : 1'b0;
+        //       // scoreboard[i][5] <= (steering_mux_sel_Dhl); // cant do this because it will update every scoreboard entry
+        //       scoreboard[i][6] <= (inst_val_Dhl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_Dhl : rfB_wen_Dhl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl))) ||
+        //                           (inst_val_X0hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X0hl : rfB_wen_X0hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X0hl : rfB_waddr_X0hl))) ||
+        //                           (inst_val_X1hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X1hl : rfB_wen_X1hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X1hl : rfB_waddr_X1hl))) ||
+        //                           (inst_val_X2hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X2hl : rfB_wen_X2hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X2hl : rfB_waddr_X2hl))) ||
+        //                           (inst_val_X3hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X3hl : rfB_wen_X3hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X3hl : rfB_waddr_X3hl)))
+        //                           // (inst_val_Whl && rf0_wen_Whl && (i == rf0_waddr_Whl))
+        //                           ? 1'b1 : 1'b0; // set pending bit
+        //   end
+        //   scoreboard[rfA_waddr_Dhl][5] <= steering_mux_sel_Dhl; // only update the scoreboard entry for the thing issuing in this cycle
+        // end
     end
 
 //   wire       rs10_AX0_byp_Dhl = rs10_en_Dhl // supposed to read it, need to keep
@@ -964,57 +968,65 @@ module riscv_CoreCtrl
   // Muldiv use stall: scoreboard entry for this register is pending, in FU 0, and scoreboard has bit in the 4,3,2, or 1 position, and corresponding instruction is muldiv
   // Load-use stall: scoreboard entry for this register is pending, in FU 0 and scoreboard has bit in the 4 or 3 position, and instruction is load
   
-  wire stall_0_muldiv_use_Dhl = (
-              // Hazard involving rs1
-              scoreboard[rs10_addr_Dhl][6] && !scoreboard[rs10_addr_Dhl][5] && ( 
-              (scoreboard[rs10_addr_Dhl][4] && is_muldiv_X0hl) ||
-              (scoreboard[rs10_addr_Dhl][3] && is_muldiv_X1hl) ||
-              (scoreboard[rs10_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs10_addr_Dhl][1] && is_muldiv_X3hl)
-            ) ) || (
-              // Hazard involving rs2
-              scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
-              (scoreboard[rs20_addr_Dhl][4] && is_muldiv_X0hl) ||
-              (scoreboard[rs20_addr_Dhl][3] && is_muldiv_X1hl) ||
-              (scoreboard[rs20_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs20_addr_Dhl][1] && is_muldiv_X3hl) ) );
 
-  wire stall_0_load_use_Dhl =   (  
-              // Hazard involving rs1
-              scoreboard[rs10_addr_Dhl][6] && !scoreboard[rs10_addr_Dhl][5] && ( 
-              (scoreboard[rs10_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs10_addr_Dhl][3] && is_load_X1hl)
-            ) ) || (
-              // Hazard involving rs2
-              scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
-              (scoreboard[rs20_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs20_addr_Dhl][3] && is_load_X1hl) ) );
+  wire stall_0_muldiv_use_Dhl = 1'b0;
+    // inst_val_Dhl && ((
+    //           // Hazard involving rs1
+              
+    //           scoreboard[rs10_addr_Dhl][6] && !scoreboard[rs10_addr_Dhl][5] && ( 
+    //           (scoreboard[rs10_addr_Dhl][4] && is_muldiv_X0hl) ||
+    //           (scoreboard[rs10_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs10_addr_Dhl][4]) ||
+    //           (scoreboard[rs10_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs10_addr_Dhl][4:3]) ||
+    //           (scoreboard[rs10_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs10_addr_Dhl][4:2]) // Makes sure doesnt stall on old register value for WAW
+    //         ) ) || (
+    //           // Hazard involving rs2
+    //           scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
+    //           (scoreboard[rs20_addr_Dhl][4] && is_muldiv_X0hl) ||
+    //           (scoreboard[rs20_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs20_addr_Dhl][4]) ||
+    //           (scoreboard[rs20_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs20_addr_Dhl][4:3]) ||
+    //           (scoreboard[rs20_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs20_addr_Dhl][4:2]) ) ));
 
-  wire stall_1_muldiv_use_Dhl = (
-              // Hazard involving rs1
-              scoreboard[rs11_addr_Dhl][6] && !scoreboard[rs11_addr_Dhl][5] && ( 
-              (scoreboard[rs11_addr_Dhl][4] && is_muldiv_X0hl) ||
-              (scoreboard[rs11_addr_Dhl][3] && is_muldiv_X1hl) ||
-              (scoreboard[rs11_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs11_addr_Dhl][1] && is_muldiv_X3hl)
-            ) ) || (
-              // Hazard involving rs2
-              scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
-              (scoreboard[rs21_addr_Dhl][4] && is_muldiv_X0hl) ||
-              (scoreboard[rs21_addr_Dhl][3] && is_muldiv_X1hl) ||
-              (scoreboard[rs21_addr_Dhl][2] && is_muldiv_X2hl) ||
-              (scoreboard[rs21_addr_Dhl][1] && is_muldiv_X3hl) ) );
+  wire stall_0_load_use_Dhl = 1'b0;
+  // inst_val_Dhl && (  (
+              
+  //             // Hazard involving rs1
+  //             scoreboard[rs10_addr_Dhl][6] && !scoreboard[rs10_addr_Dhl][5] && ( 
+  //             (scoreboard[rs10_addr_Dhl][4] && is_load_X0hl) ||
+  //             (scoreboard[rs10_addr_Dhl][3] && is_load_X1hl && !scoreboard[rs10_addr_Dhl][4])
+  //           ) ) || (
+  //             // Hazard involving rs2
+  //             scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
+  //             (scoreboard[rs20_addr_Dhl][4] && is_load_X0hl) ||
+  //             (scoreboard[rs20_addr_Dhl][3] && is_load_X1hl) && !scoreboard[rs20_addr_Dhl][4]) ));
 
-  wire stall_1_load_use_Dhl =   (  
-              // Hazard involving rs1
-              scoreboard[rs11_addr_Dhl][6] && !scoreboard[rs11_addr_Dhl][5] && ( 
-              (scoreboard[rs11_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs11_addr_Dhl][3] && is_load_X1hl)
-            ) ) || (
-              // Hazard involving rs2
-              scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
-              (scoreboard[rs21_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs21_addr_Dhl][3] && is_load_X1hl) ) );
+  wire stall_1_muldiv_use_Dhl = 1'b0;
+    // inst_val_Dhl && ((
+    //           // Hazard involving rs1
+    //           scoreboard[rs11_addr_Dhl][6] && !scoreboard[rs11_addr_Dhl][5] && ( 
+    //           (scoreboard[rs11_addr_Dhl][4] && is_muldiv_X0hl) ||
+    //           (scoreboard[rs11_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs11_addr_Dhl][4]) ||
+    //           (scoreboard[rs11_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs11_addr_Dhl][4:3]) ||
+    //           (scoreboard[rs11_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs11_addr_Dhl][4:2]) // Makes sure doesnt stall on old register value for WAW
+    //         ) ) || (
+    //           // Hazard involving rs2
+    //           scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
+    //           (scoreboard[rs21_addr_Dhl][4] && is_muldiv_X0hl) ||
+    //           (scoreboard[rs21_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs21_addr_Dhl][4]) ||
+    //           (scoreboard[rs21_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs21_addr_Dhl][4:3]) ||
+    //           (scoreboard[rs21_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs21_addr_Dhl][4:2]) ) ));
+
+  wire stall_1_load_use_Dhl = 1'b0;
+    // inst_val_Dhl && ((  
+    
+    //           // Hazard involving rs1
+    //           scoreboard[rs11_addr_Dhl][6] && !scoreboard[rs11_addr_Dhl][5] && ( 
+    //           (scoreboard[rs11_addr_Dhl][4] && is_load_X0hl) ||
+    //           (scoreboard[rs11_addr_Dhl][3] && is_load_X1hl && !scoreboard[rs11_addr_Dhl][4] )
+    //         ) ) || (
+    //           // Hazard involving rs2
+    //           scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
+    //           (scoreboard[rs21_addr_Dhl][4] && is_load_X0hl) ||
+    //           (scoreboard[rs21_addr_Dhl][3] && is_load_X1hl && !scoreboard[rs21_addr_Dhl][4]) )) );
 
 
   // wire stall_0_muldiv_use_Dhl = inst_val_Dhl && (
