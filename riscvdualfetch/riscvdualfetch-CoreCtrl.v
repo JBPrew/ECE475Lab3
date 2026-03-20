@@ -228,7 +228,6 @@ module riscv_CoreCtrl
   always @ ( posedge clk ) begin
     if ( reset ) begin
       bubble_Dhl <= 1'b1;
-      steering_mux_sel_Dhl <= 1'b0;
     end
     else if( !stall_Dhl ) begin // todo seperate into stall 0 and stall 1
       ir0_Dhl    <= imemresp0_queue_mux_out_Fhl;
@@ -578,37 +577,43 @@ module riscv_CoreCtrl
 
   // Steering Logic
 
-  // TODO: generate your steering signal here!
-  reg stall_0_structural_Dhl = 1'b0; // stall 0D for structural hazard in D stage
-  reg stall_1_structural_Dhl = 1'b0; // stall 1D for structural hazard in D stage
+    wire current_stall_Dhl = (steering_mux_sel_Dhl == 1'b0) ? stall0_Dhl : stall1_Dhl; // if the current instruction we want to issue is stalled, then we are stalled
+    // should we save instruction for next cycle? happens when we have a valid pair, currently issuing first, first instruction not stalled, x0 not blocking progress, and we do not need to kill second stage because of redirect, will move to second stage
+    wire hold_both_Dhl = inst_val_Dhl && (steering_mux_sel_Dhl == 1'b0) && !current_stall_Dhl && !stall_X0hl && !brj_taken_Dhl;
 
-  always @(posedge clk) begin
-    if (inst_issued_X0hl == 1'b1) begin
-      steering_mux_sel_Dhl = ~steering_mux_sel_Dhl;
+    always @(posedge clk) begin
+        if (reset) begin
+            steering_mux_sel_Dhl <= 1'b0; // reset to 0, meaning we will try to move the bottom instruction first
+        end
+        else if (squash_Dhl || brj_taken_Dhl) begin 
+            steering_mux_sel_Dhl <= 1'b0; // if we need to squash the entire decode, we will start with the top instruction
+        end
+        else if (inst_val_Dhl && !stall_X0hl && !current_stall_Dhl) begin // we have an instruction that actually issues
+            steering_mux_sel_Dhl <= hold_both_Dhl ? 1'b1 :1;b0; // if hold both we have a second instruction to issue and switch to it
+        end
     end
-  end
 
 
   always @(*) begin
     // TODO UDPATE SCOREBOARD
-    if ( inst_issued_X0hl == 1'b1) begin // we just issued an instrcution using the previous steering_mux_sel, now switch it to the other for the next instruction
-    //     steering_mux_sel_Dhl <= ~steering_mux_sel_Dhl; // DONT DO THIS!
-        if ( steering_mux_sel_Dhl == 1'b0 ) // move one instruction from D into X0 (and tell which one, removing A instruciton)
-        begin // keep the bottom instruction there
-            stall_0_structural_Dhl = 1'b0;
-            stall_1_structural_Dhl = 1'b1;
-            // something with instaA_Dhl
-            instA_Dhl = ir0_Dhl; // move from D into A
-            instB_Dhl = ir1_Dhl; // invalid instruction
-        end
-        else if ( steering_mux_sel_Dhl == 1'b1 ) // move one instruction from D into X0 (and tell which one, removing B instruciton)
-        begin // keep top instruction there
-            stall_0_structural_Dhl = 1'b1;
-            stall_1_structural_Dhl = 1'b0;
-            instA_Dhl = ir1_Dhl; // move from D into A
-            instB_Dhl = ir0_Dhl; // invalid instruction
-        end
-    end
+    instA_Dhl = (steering_mux_sel_Dhl == 1'b0) ? ir0_Dhl : ir1_Dhl; // default move the instruction we want to issue into A
+    instB_Dhl = 32'b0; // default to invalid instruction in B, TODO part b
+
+    
+    // if ( inst_issued_X0hl == 1'b1) begin // we just issued an instrcution using the previous steering_mux_sel, now switch it to the other for the next instruction
+    // //     steering_mux_sel_Dhl <= ~steering_mux_sel_Dhl; // DONT DO THIS!
+    //     if ( steering_mux_sel_Dhl == 1'b0 ) // move one instruction from D into X0 (and tell which one, removing A instruciton)
+    //     begin /
+    //         // something with instaA_Dhl
+    //         instA_Dhl = ir0_Dhl; // move from D into A
+    //         instB_Dhl = ir1_Dhl; // invalid instruction
+    //     end
+    //     else if ( steering_mux_sel_Dhl == 1'b1 ) // move one instruction from D into X0 (and tell which one, removing B instruciton)
+    //     begin // keep top instruction there
+    //         instA_Dhl = ir1_Dhl; // move from D into A
+    //         instB_Dhl = ir0_Dhl; // invalid instruction
+    //     end
+    // end
   end
 
   
@@ -1127,7 +1132,7 @@ module riscv_CoreCtrl
   wire stallB_Dhl = (stall_1_Dhl && !steering_mux_sel_Dhl) || (stall_0_Dhl && steering_mux_sel_Dhl);
 
 
-  assign stall_Dhl = (stall_X0hl || stallA_Dhl); // NOTE THINK ABOUT ADDING 1 for part 2
+  assign stall_Dhl = (stall_X0hl || current_stall_Dhl || hold_both_Dhl); // NOTE THINK ABOUT ADDING 1 for part 2
   wire stall_0_Dhl = (stall_0_muldiv_use_Dhl || stall_0_load_use_Dhl);
   wire stall_1_Dhl = (stall_1_muldiv_use_Dhl || stall_1_load_use_Dhl);
 
