@@ -577,7 +577,7 @@ module riscv_CoreCtrl
 
   // Steering Logic
 
-    wire current_stall_Dhl = (steering_mux_sel_Dhl == 1'b0) ? stall0_Dhl : stall1_Dhl; // if the current instruction we want to issue is stalled, then we are stalled
+    wire current_stall_Dhl = (steering_mux_sel_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl; // if the current instruction we want to issue is stalled, then we are stalled
     // should we save instruction for next cycle? happens when we have a valid pair, currently issuing first, first instruction not stalled, x0 not blocking progress, and we do not need to kill second stage because of redirect, will move to second stage
     wire hold_both_Dhl = inst_val_Dhl && (steering_mux_sel_Dhl == 1'b0) && !current_stall_Dhl && !stall_X0hl && !brj_taken_Dhl;
 
@@ -589,7 +589,7 @@ module riscv_CoreCtrl
             steering_mux_sel_Dhl <= 1'b0; // if we need to squash the entire decode, we will start with the top instruction
         end
         else if (inst_val_Dhl && !stall_X0hl && !current_stall_Dhl) begin // we have an instruction that actually issues
-            steering_mux_sel_Dhl <= hold_both_Dhl ? 1'b1 :1;b0; // if hold both we have a second instruction to issue and switch to it
+            steering_mux_sel_Dhl <= hold_both_Dhl ? 1'b1 :1'b0; // if hold both we have a second instruction to issue and switch to it
         end
     end
 
@@ -668,32 +668,32 @@ module riscv_CoreCtrl
 
 
     // scoreboard logic
-  // integer i;
-  // always @ (posedge clk) begin
-  //       if (reset) begin 
-  //           for (i = 0; i < 32; i = i + 1) begin
-  //               scoreboard[i][6:0] <= 7'b0; // clear all bits
-  //           end
-  //       end
-        // else begin
-        //   for (i = 0; i < 32; i++) begin
-        //       scoreboard[i][0] <= (!stall_X3hl) ? scoreboard[i][1] : scoreboard[i][0];
-        //       scoreboard[i][1] <= (!stall_X2hl) ? scoreboard[i][2] : scoreboard[i][1];
-        //       scoreboard[i][2] <= (!stall_X1hl) ? scoreboard[i][3] : scoreboard[i][2];
-        //       scoreboard[i][3] <= (!stall_X0hl) ? scoreboard[i][4] : scoreboard[i][3];
-        //       scoreboard[i][4] <= ((i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl)) && !stall_Dhl) ? 1'b1 : 1'b0;
-        //       // scoreboard[i][5] <= (steering_mux_sel_Dhl); // cant do this because it will update every scoreboard entry
-        //       scoreboard[i][6] <= (inst_val_Dhl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_Dhl : rfB_wen_Dhl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl))) ||
-        //                           (inst_val_X0hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X0hl : rfB_wen_X0hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X0hl : rfB_waddr_X0hl))) ||
-        //                           (inst_val_X1hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X1hl : rfB_wen_X1hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X1hl : rfB_waddr_X1hl))) ||
-        //                           (inst_val_X2hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X2hl : rfB_wen_X2hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X2hl : rfB_waddr_X2hl))) ||
-        //                           (inst_val_X3hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X3hl : rfB_wen_X3hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X3hl : rfB_waddr_X3hl)))
-        //                           // (inst_val_Whl && rf0_wen_Whl && (i == rf0_waddr_Whl))
-        //                           ? 1'b1 : 1'b0; // set pending bit
-        //   end
-        //   scoreboard[rfA_waddr_Dhl][5] <= steering_mux_sel_Dhl; // only update the scoreboard entry for the thing issuing in this cycle
-        // end
-    // end
+  integer i;
+  always @ (posedge clk) begin
+        if (reset) begin 
+            for (i = 0; i < 32; i = i + 1) begin
+                scoreboard[i][6:0] <= 7'b0; // clear all bits
+            end
+        end
+        else begin
+          for (i = 0; i < 32; i++) begin
+              scoreboard[i][0] <= (!stall_X3hl) ? scoreboard[i][1] : scoreboard[i][0];
+              scoreboard[i][1] <= (!stall_X2hl) ? scoreboard[i][2] : scoreboard[i][1];
+              scoreboard[i][2] <= (!stall_X1hl) ? scoreboard[i][3] : scoreboard[i][2];
+              scoreboard[i][3] <= (!stall_X0hl) ? scoreboard[i][4] : scoreboard[i][3];
+              scoreboard[i][4] <= ((i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl)) && !stall_Dhl) ? 1'b1 : 1'b0;
+            //   scoreboard[i][5] <= (steering_mux_sel_Dhl); // cant do this because it will update every scoreboard entry
+              scoreboard[i][6] <= (inst_val_Dhl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_Dhl : rfB_wen_Dhl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl))) ||
+                                  (inst_val_X0hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X0hl : rfB_wen_X0hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X0hl : rfB_waddr_X0hl))) ||
+                                  (inst_val_X1hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X1hl : rfB_wen_X1hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X1hl : rfB_waddr_X1hl))) ||
+                                  (inst_val_X2hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X2hl : rfB_wen_X2hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X2hl : rfB_waddr_X2hl))) ||
+                                  (inst_val_X3hl && ((scoreboard[i][5] == 1'b0) ? rfA_wen_X3hl : rfB_wen_X3hl) && (i == ((scoreboard[i][5] == 1'b0) ? rfA_waddr_X3hl : rfB_waddr_X3hl)))
+                                  // (inst_val_Whl && rf0_wen_Whl && (i == rf0_waddr_Whl))
+                                  ? 1'b1 : 1'b0; // set pending bit
+          end
+          scoreboard[rfA_waddr_Dhl][5] <= steering_mux_sel_Dhl; // only update the scoreboard entry for the thing issuing in this cycle
+        end
+    end
 
 //   wire       rs10_AX0_byp_Dhl = rs10_en_Dhl // supposed to read it, need to keep
 //                          && rfA_wen_X0hl // re
@@ -1217,6 +1217,8 @@ module riscv_CoreCtrl
       rfB_waddr_X0hl     <= rfB_waddr_Dhl;
       instA_X0hl         <= instA_Dhl;
       instB_X0hl         <= instB_Dhl;
+
+      scoreboard[(steering_mux_sel_Dhl == 1'b0) ? rfA_waddr_Dhl : rfB_waddr_Dhl][5] <= steering_mux_sel_Dhl; // mark the destination register as pending in the scoreboard, use steering_mux_sel to determine which instruction is being issued and therefore which destination register to mark
 
 
       bubble_X0hl          <= bubble_next_Dhl;
