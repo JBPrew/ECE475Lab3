@@ -582,10 +582,17 @@ module riscv_CoreCtrl
   reg stall_0_structural_Dhl = 1'b0; // stall 0D for structural hazard in D stage
   reg stall_1_structural_Dhl = 1'b0; // stall 1D for structural hazard in D stage
 
+  always @(posedge clk) begin
+    if (inst_issued_X0hl == 1'b1) begin
+      steering_mux_sel_Dhl = ~steering_mux_sel_Dhl;
+    end
+  end
+
+
   always @(*) begin
     // TODO UDPATE SCOREBOARD
     if ( inst_issued_X0hl == 1'b1) begin // we just issued an instrcution using the previous steering_mux_sel, now switch it to the other for the next instruction
-        steering_mux_sel_Dhl <= ~steering_mux_sel_Dhl;
+    //     steering_mux_sel_Dhl <= ~steering_mux_sel_Dhl; // DONT DO THIS!
         if ( steering_mux_sel_Dhl == 1'b0 ) // move one instruction from D into X0 (and tell which one, removing A instruciton)
         begin // keep the bottom instruction there
             stall_0_structural_Dhl = 1'b0;
@@ -652,17 +659,17 @@ module riscv_CoreCtrl
   // see if pending instructions and see if its in the right spot for bypassing, and if so, set the bypass signal for that instruction
   reg [6:0] scoreboard [31:0]; // scoreboard (index by register, first bit is pending, second bit is functional unit, last 4 bits are stage in mem unit)
   // wire [6:0] scoreboard [31:0] = 
-  wire sb_debug = scoreboard[5'b0][6:0];
+  wire [6:0] sb_debug = scoreboard[5'd0][6:0];
 
 
     // scoreboard logic
-  integer i;
-    always @ (posedge clk) begin
-        if (reset) begin 
-            for (i = 0; i < 32; i = i + 1) begin
-                scoreboard[i][6:0] <= 7'b0; // clear all bits
-            end
-        end
+  // integer i;
+  // always @ (posedge clk) begin
+  //       if (reset) begin 
+  //           for (i = 0; i < 32; i = i + 1) begin
+  //               scoreboard[i][6:0] <= 7'b0; // clear all bits
+  //           end
+  //       end
         // else begin
         //   for (i = 0; i < 32; i++) begin
         //       scoreboard[i][0] <= (!stall_X3hl) ? scoreboard[i][1] : scoreboard[i][0];
@@ -681,7 +688,7 @@ module riscv_CoreCtrl
         //   end
         //   scoreboard[rfA_waddr_Dhl][5] <= steering_mux_sel_Dhl; // only update the scoreboard entry for the thing issuing in this cycle
         // end
-    end
+    // end
 
 //   wire       rs10_AX0_byp_Dhl = rs10_en_Dhl // supposed to read it, need to keep
 //                          && rfA_wen_X0hl // re
@@ -812,77 +819,77 @@ module riscv_CoreCtrl
 
   // Operand Bypass Mux Select
 
-  assign opA0_byp_mux_sel_Dhl
-    = (!rsA0_en_Dhl || (rsA0_addr_Dhl == 5'd0) || !scoreboard[rsA0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
-    : (scoreboard[rsA0_addr_Dhl][5]) ? ( // TODO mux_sel??
-        (scoreboard[rsA0_addr_Dhl][4]) ? am_AX0_byp
-        : (scoreboard[rsA0_addr_Dhl][3]) ? am_AX1_byp
-        : (scoreboard[rsA0_addr_Dhl][2]) ? am_AX2_byp
-        : (scoreboard[rsA0_addr_Dhl][1]) ? am_AX3_byp
-        : (scoreboard[rsA0_addr_Dhl][0])  ? am_AW_byp :
-        am_r0
-    ) : (
-        (scoreboard[rsA0_addr_Dhl][4]) ? am_BX0_byp
-        : (scoreboard[rsA0_addr_Dhl][3]) ? am_BX1_byp
-        : (scoreboard[rsA0_addr_Dhl][2]) ? am_BX2_byp
-        : (scoreboard[rsA0_addr_Dhl][1]) ? am_BX3_byp
-        : (scoreboard[rsA0_addr_Dhl][0])  ? am_BW_byp
-        : am_r0
-    );
+  assign opA0_byp_mux_sel_Dhl = am_r0;
+    // = (!rsA0_en_Dhl || (rsA0_addr_Dhl == 5'd0) || !scoreboard[rsA0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
+    // : (scoreboard[rsA0_addr_Dhl][5]) ? ( // TODO mux_sel??
+    //     (scoreboard[rsA0_addr_Dhl][4]) ? am_AX0_byp
+    //     : (scoreboard[rsA0_addr_Dhl][3]) ? am_AX1_byp
+    //     : (scoreboard[rsA0_addr_Dhl][2]) ? am_AX2_byp
+    //     : (scoreboard[rsA0_addr_Dhl][1]) ? am_AX3_byp
+    //     : (scoreboard[rsA0_addr_Dhl][0])  ? am_AW_byp :
+    //     am_r0
+    // ) : (
+    //     (scoreboard[rsA0_addr_Dhl][4]) ? am_BX0_byp
+    //     : (scoreboard[rsA0_addr_Dhl][3]) ? am_BX1_byp
+    //     : (scoreboard[rsA0_addr_Dhl][2]) ? am_BX2_byp
+    //     : (scoreboard[rsA0_addr_Dhl][1]) ? am_BX3_byp
+    //     : (scoreboard[rsA0_addr_Dhl][0])  ? am_BW_byp
+    //     : am_r0
+    // );
     
-    assign opA1_byp_mux_sel_Dhl
-        = (!rsA1_en_Dhl || (rsA1_addr_Dhl == 5'd0) || !scoreboard[rsA1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
-        : (scoreboard[rsA1_addr_Dhl][5]) ? (
-            (scoreboard[rsA1_addr_Dhl][4]) ? bm_AX0_byp
-            : (scoreboard[rsA1_addr_Dhl][3]) ? bm_AX1_byp
-            : (scoreboard[rsA1_addr_Dhl][2]) ? bm_AX2_byp
-            : (scoreboard[rsA1_addr_Dhl][1]) ? bm_AX3_byp
-            : (scoreboard[rsA1_addr_Dhl][0])  ? bm_AW_byp
-            : bm_r1
-        ) : (
-            (scoreboard[rsA1_addr_Dhl][4]) ? bm_BX0_byp
-            : (scoreboard[rsA1_addr_Dhl][3]) ? bm_BX1_byp
-            : (scoreboard[rsA1_addr_Dhl][2]) ? bm_BX2_byp
-            : (scoreboard[rsA1_addr_Dhl][1]) ? bm_BX3_byp
-            : (scoreboard[rsA1_addr_Dhl][0])  ? bm_BW_byp
-            : bm_r1
-        );
+    assign opA1_byp_mux_sel_Dhl = bm_r1;
+        // = (!rsA1_en_Dhl || (rsA1_addr_Dhl == 5'd0) || !scoreboard[rsA1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
+        // : (scoreboard[rsA1_addr_Dhl][5]) ? (
+        //     (scoreboard[rsA1_addr_Dhl][4]) ? bm_AX0_byp
+        //     : (scoreboard[rsA1_addr_Dhl][3]) ? bm_AX1_byp
+        //     : (scoreboard[rsA1_addr_Dhl][2]) ? bm_AX2_byp
+        //     : (scoreboard[rsA1_addr_Dhl][1]) ? bm_AX3_byp
+        //     : (scoreboard[rsA1_addr_Dhl][0])  ? bm_AW_byp
+        //     : bm_r1
+        // ) : (
+        //     (scoreboard[rsA1_addr_Dhl][4]) ? bm_BX0_byp
+        //     : (scoreboard[rsA1_addr_Dhl][3]) ? bm_BX1_byp
+        //     : (scoreboard[rsA1_addr_Dhl][2]) ? bm_BX2_byp
+        //     : (scoreboard[rsA1_addr_Dhl][1]) ? bm_BX3_byp
+        //     : (scoreboard[rsA1_addr_Dhl][0])  ? bm_BW_byp
+        //     : bm_r1
+        // );
 
-    assign opB0_byp_mux_sel_Dhl
-    = (!rsB0_en_Dhl || (rsB0_addr_Dhl == 5'd0) || !scoreboard[rsB0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
-        : (scoreboard[rsB0_addr_Dhl][5]) ? (
-            (scoreboard[rsB0_addr_Dhl][4]) ? am_AX0_byp
-            : (scoreboard[rsB0_addr_Dhl][3]) ? am_AX1_byp
-            : (scoreboard[rsB0_addr_Dhl][2]) ? am_AX2_byp
-            : (scoreboard[rsB0_addr_Dhl][1]) ? am_AX3_byp
-            : (scoreboard[rsB0_addr_Dhl][0])  ? am_AW_byp
-            : am_r0
-        ) : (
-            (scoreboard[rsB0_addr_Dhl][4]) ? am_BX0_byp
-            : (scoreboard[rsB0_addr_Dhl][3]) ? am_BX1_byp
-            : (scoreboard[rsB0_addr_Dhl][2]) ? am_BX2_byp
-            : (scoreboard[rsB0_addr_Dhl][1]) ? am_BX3_byp
-            : (scoreboard[rsB0_addr_Dhl][0])  ? am_BW_byp
-            : am_r0
-        );
+    assign opB0_byp_mux_sel_Dhl = am_r0;
+    // = (!rsB0_en_Dhl || (rsB0_addr_Dhl == 5'd0) || !scoreboard[rsB0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
+    //     : (scoreboard[rsB0_addr_Dhl][5]) ? (
+    //         (scoreboard[rsB0_addr_Dhl][4]) ? am_AX0_byp
+    //         : (scoreboard[rsB0_addr_Dhl][3]) ? am_AX1_byp
+    //         : (scoreboard[rsB0_addr_Dhl][2]) ? am_AX2_byp
+    //         : (scoreboard[rsB0_addr_Dhl][1]) ? am_AX3_byp
+    //         : (scoreboard[rsB0_addr_Dhl][0])  ? am_AW_byp
+    //         : am_r0
+    //     ) : (
+    //         (scoreboard[rsB0_addr_Dhl][4]) ? am_BX0_byp
+    //         : (scoreboard[rsB0_addr_Dhl][3]) ? am_BX1_byp
+    //         : (scoreboard[rsB0_addr_Dhl][2]) ? am_BX2_byp
+    //         : (scoreboard[rsB0_addr_Dhl][1]) ? am_BX3_byp
+    //         : (scoreboard[rsB0_addr_Dhl][0])  ? am_BW_byp
+    //         : am_r0
+    //     );
 
-    assign opB1_byp_mux_sel_Dhl
-    = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
-        : (scoreboard[rsB1_addr_Dhl][5]) ? (
-            (scoreboard[rsB1_addr_Dhl][4]) ? bm_AX0_byp
-            : (scoreboard[rsB1_addr_Dhl][3]) ? bm_AX1_byp
-            : (scoreboard[rsB1_addr_Dhl][2]) ? bm_AX2_byp
-            : (scoreboard[rsB1_addr_Dhl][1]) ? bm_AX3_byp
-            : (scoreboard[rsB1_addr_Dhl][0])  ? bm_AW_byp
-            : bm_r1
-        ) : (
-            (scoreboard[rsB1_addr_Dhl][4]) ? bm_BX0_byp
-            : (scoreboard[rsB1_addr_Dhl][3]) ? bm_BX1_byp
-            : (scoreboard[rsB1_addr_Dhl][2]) ? bm_BX2_byp
-            : (scoreboard[rsB1_addr_Dhl][1]) ? bm_BX3_byp
-            : (scoreboard[rsB1_addr_Dhl][0])  ? bm_BW_byp
-            : bm_r1
-        );
+    assign opB1_byp_mux_sel_Dhl = bm_r1;
+    // = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
+    //     : (scoreboard[rsB1_addr_Dhl][5]) ? (
+    //         (scoreboard[rsB1_addr_Dhl][4]) ? bm_AX0_byp
+    //         : (scoreboard[rsB1_addr_Dhl][3]) ? bm_AX1_byp
+    //         : (scoreboard[rsB1_addr_Dhl][2]) ? bm_AX2_byp
+    //         : (scoreboard[rsB1_addr_Dhl][1]) ? bm_AX3_byp
+    //         : (scoreboard[rsB1_addr_Dhl][0])  ? bm_AW_byp
+    //         : bm_r1
+    //     ) : (
+    //         (scoreboard[rsB1_addr_Dhl][4]) ? bm_BX0_byp
+    //         : (scoreboard[rsB1_addr_Dhl][3]) ? bm_BX1_byp
+    //         : (scoreboard[rsB1_addr_Dhl][2]) ? bm_BX2_byp
+    //         : (scoreboard[rsB1_addr_Dhl][1]) ? bm_BX3_byp
+    //         : (scoreboard[rsB1_addr_Dhl][0])  ? bm_BW_byp
+    //         : bm_r1
+    //     );
 //   assign op01_byp_mux_sel_Dhl
 //     = (rs20_AX0_byp_Dhl) ? bm_AX0_byp
 //     : (rs20_AX1_byp_Dhl) ? bm_AX1_byp
