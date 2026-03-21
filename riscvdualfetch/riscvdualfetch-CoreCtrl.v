@@ -192,14 +192,23 @@ module riscv_CoreCtrl
   reg        imemresp1_queue_val_Fhl;
 
   always @ ( posedge clk ) begin
-    if ( imemresp0_queue_en_Fhl ) begin
-      imemresp0_queue_reg_Fhl <= imemresp0_msg_data;
+    if (reset) begin
+        imemresp0_queue_reg_Fhl <= 32'b0;
+        imemresp0_queue_val_Fhl <= 1'b0;
+        imemresp1_queue_reg_Fhl <= 32'b0;
+        imemresp1_queue_val_Fhl <= 1'b0;
     end
-    if ( imemresp1_queue_en_Fhl ) begin
-      imemresp1_queue_reg_Fhl <= imemresp1_msg_data;
+    else begin
+        
+        if ( imemresp0_queue_en_Fhl ) begin
+        imemresp0_queue_reg_Fhl <= imemresp0_msg_data;
+        end
+        if ( imemresp1_queue_en_Fhl ) begin
+        imemresp1_queue_reg_Fhl <= imemresp1_msg_data;
+        end
+        imemresp0_queue_val_Fhl <= imemresp0_queue_val_next_Fhl;
+        imemresp1_queue_val_Fhl <= imemresp1_queue_val_next_Fhl;
     end
-    imemresp0_queue_val_Fhl <= imemresp0_queue_val_next_Fhl;
-    imemresp1_queue_val_Fhl <= imemresp1_queue_val_next_Fhl;
   end
 
   //----------------------------------------------------------------------
@@ -692,13 +701,13 @@ module riscv_CoreCtrl
 
 
 wire issueA_Dhl = inst_val_Dhl && !stall_X0hl && !stallA_Dhl;
-wire issueB_Dhl = inst_val_Dhl && !stall_X0hl && !bubbleB_Dhl && !stallB_Dhl && !brj_taken_Dhl;
+wire issueB_Dhl = 1'b0; // change for part 2 inst_val_Dhl && !stall_X0hl && !bubbleB_Dhl && !stallB_Dhl && !brj_taken_Dhl??
 
 wire issueA_wen_Dhl = issueA_Dhl && rfA_wen_Dhl && (rfA_waddr_Dhl != 5'd0);
 wire issueB_wen_Dhl = issueB_Dhl && rfB_wen_Dhl && (rfB_waddr_Dhl != 5'd0);
 
 reg [4:0] sb_stage_next;
-reg       sb_fun_next;
+reg       sb_func_next;
 reg       sb_pending_next;
 integer i;
 
@@ -731,7 +740,7 @@ always @ (posedge clk) begin
         sb_func_next  = 1'b1;     // produced by B
       end
 
-      sb_pending_next = (!scoreboard[i][4:0]) ? 1'b1 : 1'b0;;
+      sb_pending_next = |sb_stage_next; // if any stage is pending, then we are pending
 
       scoreboard[i][4:0] <= sb_stage_next;
       scoreboard[i][5]   <= sb_pending_next ? sb_func_next : 1'b0;
@@ -908,7 +917,7 @@ end
 
   assign opA0_byp_mux_sel_Dhl  
     = (!rsA0_en_Dhl || (rsA0_addr_Dhl == 5'd0) || !scoreboard[rsA0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
-    : (scoreboard[rsA0_addr_Dhl][5]) ? ( // TODO mux_sel??
+    : (scoreboard[rsA0_addr_Dhl][5] == 1'b0) ? ( // TODO mux_sel??
         (scoreboard[rsA0_addr_Dhl][4]) ? am_AX0_byp
         : (scoreboard[rsA0_addr_Dhl][3]) ? am_AX1_byp
         : (scoreboard[rsA0_addr_Dhl][2]) ? am_AX2_byp
@@ -926,7 +935,7 @@ end
     
     assign opA1_byp_mux_sel_Dhl 
         = (!rsA1_en_Dhl || (rsA1_addr_Dhl == 5'd0) || !scoreboard[rsA1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
-        : (scoreboard[rsA1_addr_Dhl][5]) ? (
+        : (scoreboard[rsA1_addr_Dhl][5] == 1'b0) ? (
             (scoreboard[rsA1_addr_Dhl][4]) ? bm_AX0_byp
             : (scoreboard[rsA1_addr_Dhl][3]) ? bm_AX1_byp
             : (scoreboard[rsA1_addr_Dhl][2]) ? bm_AX2_byp
@@ -946,7 +955,7 @@ end
     assign opB1_byp_mux_sel_Dhl = bm_r1;
     // assign opB0_byp_mux_sel_Dhl  
     // = (!rsB0_en_Dhl || (rsB0_addr_Dhl == 5'd0) || !scoreboard[rsB0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
-    //     : (scoreboard[rsB0_addr_Dhl][5]) ? (
+    //     : (scoreboard[rsB0_addr_Dhl][5] == 1'b0) ? (
     //         (scoreboard[rsB0_addr_Dhl][4]) ? am_AX0_byp
     //         : (scoreboard[rsB0_addr_Dhl][3]) ? am_AX1_byp
     //         : (scoreboard[rsB0_addr_Dhl][2]) ? am_AX2_byp
@@ -964,7 +973,7 @@ end
 
     // assign opB1_byp_mux_sel_Dhl 
     // = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
-    //     : (scoreboard[rsB1_addr_Dhl][5]) ? (
+    //     : (scoreboard[rsB1_addr_Dhl][5] == 1'b0) ? (
     //         (scoreboard[rsB1_addr_Dhl][4]) ? bm_AX0_byp
     //         : (scoreboard[rsB1_addr_Dhl][3]) ? bm_AX1_byp
     //         : (scoreboard[rsB1_addr_Dhl][2]) ? bm_AX2_byp
@@ -1117,7 +1126,7 @@ end
               (scoreboard[rs21_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs21_addr_Dhl][4:3]) ||
               (scoreboard[rs21_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs21_addr_Dhl][4:2]) ) ));
 
-  wire stall_1_load_use_Dhl = 1'b0;
+  wire stall_1_load_use_Dhl = 
     inst_val_Dhl && ((  
     
               // Hazard involving rs1
@@ -1282,6 +1291,29 @@ end
       bubble_X0hl <= 1'b1;
       bubbleB_X0hl <= 1'b1;
       inst_issued_X0hl <= 1'b0;
+      ir0_X0hl              <= 32'b0;
+      br_sel_X0hl           <= br_none;
+      muldivreq_val_X0hl    <= 1'b0;
+      muldivreq_msg_fn_X0hl <= 3'b0;
+      muldiv_mux_sel_X0hl   <= 1'b0;
+      execute_mux_sel_X0hl  <= 1'b0;
+      is_load_X0hl          <= 1'b0;
+      is_muldiv_X0hl        <= 1'b0;
+      dmemreq_msg_rw_X0hl   <= 1'b0;
+      dmemreq_msg_len_X0hl  <= 2'b0;
+      dmemreq_val_X0hl      <= 1'b0;
+      dmemresp_mux_sel_X0hl <= 3'b0;
+      memex_mux_sel_X0hl    <= 1'b0;
+      csr_wen_X0hl          <= 1'b0;
+      csr_addr_X0hl         <= 12'b0;
+      aluA_fn_X0hl          <= 4'b0;
+      aluB_fn_X0hl          <= 4'b0;
+      rfA_wen_X0hl          <= 1'b0;
+      rfA_waddr_X0hl        <= 5'b0;
+      rfB_wen_X0hl          <= 1'b0;
+      rfB_waddr_X0hl        <= 5'b0;
+      instA_X0hl            <= 32'b0;
+      instB_X0hl            <= 32'b0;
     end
     else if( !stall_X0hl ) begin
       ir0_X0hl              <= ir0_Dhl;
@@ -1426,6 +1458,21 @@ end
 
       bubble_X1hl <= 1'b1;
       bubbleB_X1hl <= 1'b1;
+      ir0_X1hl              <= 32'b0;
+      is_load_X1hl          <= 1'b0;
+      is_muldiv_X1hl        <= 1'b0;
+      dmemresp_mux_sel_X1hl <= 3'b0;
+      memex_mux_sel_X1hl    <= 1'b0;
+      execute_mux_sel_X1hl  <= 1'b0;
+      muldiv_mux_sel_X1hl   <= 1'b0;
+      csr_wen_X1hl          <= 1'b0;
+      csr_addr_X1hl         <= 5'b0;
+      rfA_wen_X1hl          <= 1'b0;
+      rfA_waddr_X1hl        <= 5'b0;
+      rfB_wen_X1hl          <= 1'b0;
+      rfB_waddr_X1hl        <= 5'b0;
+      instA_X1hl            <= 32'b0;
+      instB_X1hl            <= 32'b0;
     end
     else if( !stall_X1hl ) begin
       ir0_X1hl              <= ir0_X0hl;
@@ -1519,6 +1566,19 @@ end
     if ( reset ) begin
       bubble_X2hl <= 1'b1;
       bubbleB_X2hl <= 1'b1;
+      ir0_X2hl              <= 32'b0;
+      is_muldiv_X2hl        <= 1'b0;
+      csr_wen_X2hl          <= 1'b0;
+      csr_addr_X2hl         <= 5'b0;
+      execute_mux_sel_X2hl  <= 1'b0;
+      muldiv_mux_sel_X2hl   <= 1'b0;
+      rfA_wen_X2hl          <= 1'b0;
+      rfA_waddr_X2hl        <= 5'b0;
+      rfB_wen_X2hl          <= 1'b0;
+      rfB_waddr_X2hl        <= 5'b0;
+      instA_X2hl            <= 32'b0;
+      instB_X2hl            <= 32'b0;
+      dmemresp_queue_val_X1hl <= 1'b0;
 
     end
     else if( !stall_X2hl ) begin
@@ -1595,6 +1655,18 @@ end
     if ( reset ) begin
       bubble_X3hl <= 1'b1;
       bubbleB_X3hl <= 1'b1;
+      ir0_X3hl              <= 32'b0;
+      is_muldiv_X3hl        <= 1'b0;
+      muldiv_mux_sel_X3hl   <= 1'b0;
+      execute_mux_sel_X3hl  <= 1'b0;
+      csr_wen_X3hl          <= 1'b0;
+      csr_addr_X3hl         <= 5'b0;
+      rfA_wen_X3hl          <= 1'b0;
+      rfA_waddr_X3hl        <= 5'b0;
+      rfB_wen_X3hl          <= 1'b0;
+      rfB_waddr_X3hl        <= 5'b0;
+      instA_X3hl            <= 32'b0;
+      instB_X3hl            <= 32'b0;
 
     end
     else if( !stall_X3hl ) begin
@@ -1885,7 +1957,8 @@ end
         // Count instructions for every cycle not squashed or stalled
 
         // FIXME: fix this when you can have at most two instructions issued per cycle! TODO2
-        if ( inst_val_Dhl && !stall_Dhl ) begin
+        // if ( inst_val_Dhl && !stall_Dhl ) begin
+        if (issue_Dhl) begin
           num_inst = num_inst + 1;
         end
 
