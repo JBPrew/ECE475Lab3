@@ -46,4 +46,6 @@ riscv_srcs += \
   riscv-sub.S \
   riscv-xor.S \
   riscv-xori.S \
+  riscv-waw.S \
+  riscv-longbyp.S \
 

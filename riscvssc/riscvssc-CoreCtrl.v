@@ -718,10 +718,10 @@ always @ (posedge clk) begin
   end
   else begin
     for (i = 0; i < 32; i = i + 1) begin
-      sb_stage_next[0] = ( stall_X3hl ) ? scoreboard[i][0] : scoreboard[i][1];
-      sb_stage_next[1] = ( stall_X2hl ) ? scoreboard[i][1] : scoreboard[i][2];
-      sb_stage_next[2] = ( stall_X1hl ) ? scoreboard[i][2] : scoreboard[i][3];
-      sb_stage_next[3] = ( stall_X0hl ) ? scoreboard[i][3] : scoreboard[i][4];
+      sb_stage_next[0] = ( stall_Whl ) ? scoreboard[i][0] : scoreboard[i][1];
+      sb_stage_next[1] = ( stall_X3hl ) ? scoreboard[i][1] : scoreboard[i][2];
+      sb_stage_next[2] = ( stall_X2hl ) ? scoreboard[i][2] : scoreboard[i][3];
+      sb_stage_next[3] = ( stall_X1hl ) ? scoreboard[i][3] : scoreboard[i][4];
       sb_stage_next[4] = ( stall_X0hl ) ? scoreboard[i][4] : 1'b0;
 
       sb_func_next = scoreboard[i][5];
@@ -1070,7 +1070,7 @@ end
 
 //   assign muldivreq_val = muldivreq_val_Dhl && inst_val_Dhl && (!bubble_next_Dhl);
   assign muldivreq_val = muldivreq_val_Dhl && issue_Dhl;
-  assign muldivresp_rdy = !stall_X0hl;
+  assign muldivresp_rdy = 1'b1; // used to be !stall_X0hl
   assign muldiv_stall_mult1 = stall_X1hl;
 
   // Only send a valid dmem request if not stalled

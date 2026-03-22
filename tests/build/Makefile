@@ -95,7 +95,7 @@ RUNFLAGS      :=
 # Installation
 
 MKINSTALLDIRS := $(scripts_dir)/mk-install-dirs.sh
-INSTALL       := /usr/bin/install -c
+INSTALL       := /usr/bin//install -c
 INSTALL_EXE   := $(INSTALL) -m 555
 STOW          := 
 
