@@ -48,4 +48,5 @@ riscv_srcs += \
   riscv-xori.S \
   riscv-waw.S \
   riscv-longbyp.S \
+  riscv-nonALU.S \
 

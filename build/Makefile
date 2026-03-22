@@ -98,6 +98,7 @@ tests = \
   riscv-xori.vmh \
   riscv-waw.vmh \
   riscv-longbyp.vmh \
+  riscv-nonALU.vmh \
 
 riscvstall_rtl_sim = riscvstall-sim
 riscvstall_rtl_rand_sim = riscvstall-randdelay-sim
