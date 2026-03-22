@@ -11,7 +11,7 @@
 `ifndef RISCV_CORE_CTRL_V
 `define RISCV_CORE_CTRL_V
 
-`include "riscvdualfetch-InstMsg.v"
+`include "riscvssc-InstMsg.v"
 
 module riscv_CoreCtrl
 (
@@ -37,7 +37,6 @@ module riscv_CoreCtrl
   output        dmemreq_val,
   input         dmemreq_rdy,
   input         dmemresp_val,
-
   // Controls Signals (ctrl->dpath)
 
   output  [1:0] pc_mux_sel_Phl,
@@ -585,27 +584,53 @@ module riscv_CoreCtrl
 
 
   // Steering Logic
+    wire inst0_writes_rd_Dhl = cs0[`RISCV_INST_MSG_RF_WEN] && inst0_rd_Dhl != 5'd0; // check if the first instruction writes to a register and is not x0
+    wire inst1_writes_rd_Dhl = cs1[`RISCV_INST_MSG_RF_WEN] && inst1_rd_Dhl != 5'd0; // check if the second instruction writes to a register and is not x0
 
-    wire current_stall_Dhl = (steering_mux_sel_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl; // if the current instruction we want to issue is stalled, then we are stalled
+    wire inst0_simple_alu_Dhl = cs0[`RISCV_INST_MSG_INST_VAL] && !cs0[`RISCV_INST_MSG_J_EN] && cs0[`RISCV_INST_MSG_BR_SEL] == br_none && cs0[`RISCV_INST_MSG_MEM_REQ] == nr && !cs0[`RISCV_INST_MSG_MULDIV_EN] && !cs0[`RISCV_INST_MSG_CSR_WEN]; // check if the first instruction is a simple ALU instruction that is not a jump, branch, memory access, or multiply/divide
+    wire inst1_simple_alu_Dhl = cs1[`RISCV_INST_MSG_INST_VAL] && !cs1[`RISCV_INST_MSG_J_EN] && cs1[`RISCV_INST_MSG_BR_SEL] == br_none && cs1[`RISCV_INST_MSG_MEM_REQ] == nr && !cs1[`RISCV_INST_MSG_MULDIV_EN] && !cs1[`RISCV_INST_MSG_CSR_WEN]; // check if the second instruction is a simple ALU instruction that is not a jump, branch, memory access, or multiply/divide
+
+    wire inst1_dep_on_inst0_Dhl = (inst0_writes_rd_Dhl && ((inst0_rd_Dhl == inst1_rs1_Dhl) || (inst0_rd_Dhl == inst1_rs2_Dhl))); // check if the second instruction depends on the first instruction's destination register
+                            // (inst1_writes_rd_Dhl && ((inst1_rd_Dhl == inst0_rs1_Dhl) || (inst1_rd_Dhl == inst0_rs2_Dhl)));   // also check if the first instruction depends on the second instruction's destination register, which would cause a WAW or WAR hazard
+
+    wire inst0_inst1_WAW_Dhl = inst0_writes_rd_Dhl && inst1_writes_rd_Dhl && (inst0_rd_Dhl == inst1_rd_Dhl); // check for WAW hazard between the two instructions
+
+  
+    reg hold_second_sel_Dhl;
+
+    wire second_inst_cycle_issue_Dhl = hold_second_sel_Dhl; // did we wait a cycle to need ot issue second instruction
+
+    wire issue_both_Dhl = !second_inst_cycle_issue_Dhl && inst_val_Dhl && (inst0_simple_alu_Dhl || inst1_simple_alu_Dhl) && !inst1_dep_on_inst0_Dhl && !inst0_inst1_WAW_Dhl && !stall_X0hl && !stall_0_Dhl && !stall_1_Dhl; // we can only issue both instructions if we are not currently holding the second instruction for a future cycle, we have a valid pair of instructions, at least one of them is a simple ALU instruction, there are no true dependencies between the two instructions, and there are no WAW hazards between the two instructions
+    wire swap_needed_Dhl = issue_both_Dhl && inst0_simple_alu_Dhl && !inst1_simple_alu_Dhl; // need a swap if inst0 is simple and inst1 is complex
+    
+    always @ (*) begin
+        steering_mux_sel_Dhl = second_inst_cycle_issue_Dhl || swap_needed_Dhl;
+    end
+    
+    wire current_stall_Dhl = (second_inst_cycle_issue_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl; // if we are issuing fresh batch, look at first instruction for stall, if we are holding second instruction, look at second instruction for stall
+
     // should we save instruction for next cycle? happens when we have a valid pair, currently issuing first, first instruction not stalled, x0 not blocking progress, and we do not need to kill second stage because of redirect, will move to second stage
-    wire hold_both_Dhl = inst_val_Dhl && (steering_mux_sel_Dhl == 1'b0) && !current_stall_Dhl && !stall_X0hl && !brj_taken_Dhl;
+    wire hold_both_Dhl = inst_val_Dhl && !second_inst_cycle_issue_Dhl && !stall_X0hl && !stall_0_Dhl && !brj_taken_Dhl && !issue_both_Dhl;
+    // inst_val_Dhl && (steering_mux_sel_Dhl == 1'b0) && !current_stall_Dhl && !stall_X0hl && !brj_taken_Dhl;
+    
 
     always @(posedge clk) begin
         if (reset) begin
-            steering_mux_sel_Dhl <= 1'b0; // reset to 0, meaning we will try to move the bottom instruction first
+            hold_second_sel_Dhl <= 1'b0; // reset to 0, meaning we will try to move the bottom instruction first
         end
         else if (squash_Dhl || brj_taken_Dhl) begin 
-            steering_mux_sel_Dhl <= 1'b0; // if we need to squash the entire decode, we will start with the top instruction
+            hold_second_sel_Dhl <= 1'b0; // if we need to squash the entire decode, we will start with the top instruction
         end
-        else if (issue_Dhl) begin // we have an instruction that actually issues
-            steering_mux_sel_Dhl <= hold_both_Dhl ? 1'b1 :1'b0; // if hold both we have a second instruction to issue and switch to it
+        else if (issueA_Dhl) begin // we have an instruction that actually issues
+            hold_second_sel_Dhl <= hold_both_Dhl; // if hold both we have a second instruction to issue and switch to it
         end
     end
 
 
   always @(*) begin
+    // TODO: UPDATE PART 2
     instA_Dhl = (steering_mux_sel_Dhl == 1'b0) ? ir0_Dhl : ir1_Dhl; // default move the instruction we want to issue into A
-    instB_Dhl = (steering_mux_sel_Dhl == 1'b1) ? ir0_Dhl : ir1_Dhl; 
+    instB_Dhl = issue_both_Dhl ? ((steering_mux_sel_Dhl == 1'b0) ? ir1_Dhl : ir0_Dhl) : 32'b0; // if we are issuing both, move the other instruction into B, otherwise set B to NOP
   end
 
   
@@ -625,36 +650,21 @@ module riscv_CoreCtrl
   wire [4:0] rsA1_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
 
 
-    // dummy signals for part 1, will need to update for part 2
-    assign opB0_mux_sel_Dhl = am_rdat;
-    assign opB1_mux_sel_Dhl = bm_rdat;
-
-    wire [3:0] aluB_fn_Dhl = alu_x;
-
-    wire rfB_wen_Dhl = 1'b0;
-    wire [4:0] rfB_waddr_Dhl = 5'd0;
-
-    wire rsB0_en_Dhl = 1'b0;
-    wire rsB1_en_Dhl = 1'b0;
-
-    wire [4:0] rsB0_addr_Dhl = 5'd0;
-    wire [4:0] rsB1_addr_Dhl = 5'd0;
-
  // TODO: PART 2 UPDATE
-//     assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
-//   assign opB1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP1_SEL] : cs1[`RISCV_INST_MSG_OP1_SEL];
+        assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
+    assign opB1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP1_SEL] : cs1[`RISCV_INST_MSG_OP1_SEL];
 
-//   wire [3:0] aluB_fn_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
+    wire [3:0] aluB_fn_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
 
-//  wire rfB_wen_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WEN] : cs1[`RISCV_INST_MSG_RF_WEN];
-//   wire [4:0] rfB_waddr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
+    wire rfB_wen_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WEN] : cs1[`RISCV_INST_MSG_RF_WEN];
+    wire [4:0] rfB_waddr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
 
 
-//   wire rsB0_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS1_EN] : cs1[`RISCV_INST_MSG_RS1_EN];
-//   wire rsB1_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS2_EN] : cs1[`RISCV_INST_MSG_RS2_EN];
+    wire rsB0_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS1_EN] : cs1[`RISCV_INST_MSG_RS1_EN];
+    wire rsB1_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS2_EN] : cs1[`RISCV_INST_MSG_RS2_EN];
 
-//     wire [4:0] rsB0_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
-//   wire [4:0] rsB1_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
+        wire [4:0] rsB0_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
+    wire [4:0] rsB1_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
 
 
   wire [4:0] rs10_addr_Dhl  = inst0_rs1_Dhl;
@@ -688,7 +698,7 @@ module riscv_CoreCtrl
 wire issueA_Dhl = inst_val_Dhl && !stall_X0hl && !stallA_Dhl;
 
 // dummy signal for part b
-wire issueB_Dhl = 1'b0; 
+wire issueB_Dhl = issue_both_Dhl; 
 // TODO PART 2:
 //  wire issueB_Dhl = inst_val_Dhl && !stall_X0hl && !bubbleB_Dhl && !stallB_Dhl && !brj_taken_Dhl??
 
@@ -720,21 +730,10 @@ always @ (posedge clk) begin
         sb_stage_next = 5'b10000; // insert at X0
         sb_func_next  = 1'b0;     // produced by A
       end
-
-
-    // // TODO UPDATE PART 2
-    //   // younger overwrites older
-    //   // B wins over A if both issue same rd on same D->x0 , since B is younger necessarily with steering logic.
-
-    //   if ( issueA_wen_Dhl && (i == rfA_waddr_Dhl) ) begin
-    //     sb_stage_next = 5'b10000; // insert at X0
-    //     sb_func_next  = 1'b0;     // produced by A
-    //   end
-    //     // b overrides A 
-    //   if ( issueB_wen_Dhl && (i == rfB_waddr_Dhl) ) begin
-    //     sb_stage_next = 5'b10000; // insert at X0
-    //     sb_func_next  = 1'b1;     // produced by B
-    //   end
+      else if ( issueB_wen_Dhl && (i == rfB_waddr_Dhl) ) begin
+        sb_stage_next = 5'b10000; // insert at X0
+        sb_func_next  = 1'b1;     // produced by B
+      end
 
       sb_pending_next = sb_stage_next[0] || sb_stage_next[1] || sb_stage_next[2] || sb_stage_next[3] || sb_stage_next[4]; // if any stage is pending, then we are pending
 
@@ -784,46 +783,42 @@ end
             : bm_r1
         );
 
-    // for part 1, just bypass from register file, so mux select is just the register file output or imm
-    assign opB0_byp_mux_sel_Dhl = am_r0;
-    assign opB1_byp_mux_sel_Dhl = bm_r1;
-
     // TODO UPDATE FOR PART 2
-    // assign opB0_byp_mux_sel_Dhl  
-    // = (!rsB0_en_Dhl || (rsB0_addr_Dhl == 5'd0) || !scoreboard[rsB0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
-    //     : (scoreboard[rsB0_addr_Dhl][5] == 1'b0) ? (
-    //         (scoreboard[rsB0_addr_Dhl][4]) ? am_AX0_byp
-    //         : (scoreboard[rsB0_addr_Dhl][3]) ? am_AX1_byp
-    //         : (scoreboard[rsB0_addr_Dhl][2]) ? am_AX2_byp
-    //         : (scoreboard[rsB0_addr_Dhl][1]) ? am_AX3_byp
-    //         : (scoreboard[rsB0_addr_Dhl][0])  ? am_AW_byp
-    //         : am_r0
-    //     ) : (
-    //         (scoreboard[rsB0_addr_Dhl][4]) ? am_BX0_byp
-    //         : (scoreboard[rsB0_addr_Dhl][3]) ? am_BX1_byp
-    //         : (scoreboard[rsB0_addr_Dhl][2]) ? am_BX2_byp
-    //         : (scoreboard[rsB0_addr_Dhl][1]) ? am_BX3_byp
-    //         : (scoreboard[rsB0_addr_Dhl][0])  ? am_BW_byp
-    //         : am_r0
-    //     );
+    assign opB0_byp_mux_sel_Dhl  
+    = (!rsB0_en_Dhl || (rsB0_addr_Dhl == 5'd0) || !scoreboard[rsB0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
+        : (scoreboard[rsB0_addr_Dhl][5] == 1'b0) ? (
+            (scoreboard[rsB0_addr_Dhl][4]) ? am_AX0_byp
+            : (scoreboard[rsB0_addr_Dhl][3]) ? am_AX1_byp
+            : (scoreboard[rsB0_addr_Dhl][2]) ? am_AX2_byp
+            : (scoreboard[rsB0_addr_Dhl][1]) ? am_AX3_byp
+            : (scoreboard[rsB0_addr_Dhl][0])  ? am_AW_byp
+            : am_r0
+        ) : (
+            (scoreboard[rsB0_addr_Dhl][4]) ? am_BX0_byp
+            : (scoreboard[rsB0_addr_Dhl][3]) ? am_BX1_byp
+            : (scoreboard[rsB0_addr_Dhl][2]) ? am_BX2_byp
+            : (scoreboard[rsB0_addr_Dhl][1]) ? am_BX3_byp
+            : (scoreboard[rsB0_addr_Dhl][0])  ? am_BW_byp
+            : am_r0
+        );
 
-    // assign opB1_byp_mux_sel_Dhl 
-    // = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
-    //     : (scoreboard[rsB1_addr_Dhl][5] == 1'b0) ? (
-    //         (scoreboard[rsB1_addr_Dhl][4]) ? bm_AX0_byp
-    //         : (scoreboard[rsB1_addr_Dhl][3]) ? bm_AX1_byp
-    //         : (scoreboard[rsB1_addr_Dhl][2]) ? bm_AX2_byp
-    //         : (scoreboard[rsB1_addr_Dhl][1]) ? bm_AX3_byp
-    //         : (scoreboard[rsB1_addr_Dhl][0])  ? bm_AW_byp
-    //         : bm_r1
-    //     ) : (
-    //         (scoreboard[rsB1_addr_Dhl][4]) ? bm_BX0_byp
-    //         : (scoreboard[rsB1_addr_Dhl][3]) ? bm_BX1_byp
-    //         : (scoreboard[rsB1_addr_Dhl][2]) ? bm_BX2_byp
-    //         : (scoreboard[rsB1_addr_Dhl][1]) ? bm_BX3_byp
-    //         : (scoreboard[rsB1_addr_Dhl][0])  ? bm_BW_byp
-    //         : bm_r1
-    //     );
+    assign opB1_byp_mux_sel_Dhl 
+    = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
+        : (scoreboard[rsB1_addr_Dhl][5] == 1'b0) ? (
+            (scoreboard[rsB1_addr_Dhl][4]) ? bm_AX0_byp
+            : (scoreboard[rsB1_addr_Dhl][3]) ? bm_AX1_byp
+            : (scoreboard[rsB1_addr_Dhl][2]) ? bm_AX2_byp
+            : (scoreboard[rsB1_addr_Dhl][1]) ? bm_AX3_byp
+            : (scoreboard[rsB1_addr_Dhl][0])  ? bm_AW_byp
+            : bm_r1
+        ) : (
+            (scoreboard[rsB1_addr_Dhl][4]) ? bm_BX0_byp
+            : (scoreboard[rsB1_addr_Dhl][3]) ? bm_BX1_byp
+            : (scoreboard[rsB1_addr_Dhl][2]) ? bm_BX2_byp
+            : (scoreboard[rsB1_addr_Dhl][1]) ? bm_BX3_byp
+            : (scoreboard[rsB1_addr_Dhl][0])  ? bm_BW_byp
+            : bm_r1
+        );
 
 
 
@@ -963,12 +958,11 @@ end
                        : ( bubble_sel_Dhl )  ? 1'b1
                        :                       1'bx;
 
-  wire bubbleB_Dhl = 1'b1; // TODO: Updated part 2
-  wire bubbleB_sel_Dhl = (squash_Dhl || stallB_Dhl || brj_taken_Dhl); // A may be a d-stage jump then we have to kill
-  wire bubbleB_next_Dhl = ( !bubbleB_sel_Dhl ) ? bubbleB_Dhl
-                       : ( bubbleB_sel_Dhl )  ? 1'b1
-                       :                       1'bx;
-
+//   wire bubbleB_sel_Dhl = (squash_Dhl || stallB_Dhl || brj_taken_Dhl); // A may be a d-stage jump then we have to kill
+//   wire bubbleB_next_Dhl = ( !bubbleB_sel_Dhl ) ? bubbleB_Dhl
+//                        : ( bubbleB_sel_Dhl )  ? 1'b1
+//                        :                       1'bx;
+    wire bubbleB_next_Dhl = !issueB_Dhl;
 
   //----------------------------------------------------------------------
   // X0 <- D
@@ -1001,8 +995,8 @@ end
   reg        bubble_X0hl;
   reg        bubbleB_X0hl;
 
-    wire issue_Dhl = inst_val_Dhl && !stall_X0hl && !current_stall_Dhl;
-
+    // wire issue_Dhl = inst_val_Dhl && !stall_X0hl && !current_stall_Dhl;
+    wire issue_Dhl = issueA_Dhl; // want true if there is at least one issue
   // Pipeline Controls
 
   always @ ( posedge clk ) begin
@@ -1665,9 +1659,7 @@ end
 
         // FIXME: fix this when you can have at most two instructions issued per cycle! 
         // TODO PART 2
-        if (issue_Dhl) begin
-          num_inst = num_inst + 1;
-        end
+        num_inst <= num_inst + issueA_Dhl + issueB_Dhl; // TODO make sure correct
 
       end
 
