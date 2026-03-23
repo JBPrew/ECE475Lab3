@@ -584,13 +584,13 @@ module riscv_CoreCtrl
 
 
   // Steering Logic
-    wire inst0_writes_rd_Dhl = cs0[`RISCV_INST_MSG_RF_WEN] && inst0_rd_Dhl != 5'd0; // check if the first instruction writes to a register and is not x0
-    wire inst1_writes_rd_Dhl = cs1[`RISCV_INST_MSG_RF_WEN] && inst1_rd_Dhl != 5'd0; // check if the second instruction writes to a register and is not x0
+    wire inst0_writes_rd_Dhl = cs0[`RISCV_INST_MSG_INST_VAL] && cs0[`RISCV_INST_MSG_RF_WEN] && inst0_rd_Dhl != 5'd0; // check if the first instruction writes to a register and is not x0
+    wire inst1_writes_rd_Dhl = cs1[`RISCV_INST_MSG_INST_VAL] && cs1[`RISCV_INST_MSG_RF_WEN] && inst1_rd_Dhl != 5'd0; // check if the second instruction writes to a register and is not x0
 
     wire inst0_simple_alu_Dhl = cs0[`RISCV_INST_MSG_INST_VAL] && !cs0[`RISCV_INST_MSG_J_EN] && cs0[`RISCV_INST_MSG_BR_SEL] == br_none && cs0[`RISCV_INST_MSG_MEM_REQ] == nr && !cs0[`RISCV_INST_MSG_MULDIV_EN] && !cs0[`RISCV_INST_MSG_CSR_WEN]; // check if the first instruction is a simple ALU instruction that is not a jump, branch, memory access, or multiply/divide
     wire inst1_simple_alu_Dhl = cs1[`RISCV_INST_MSG_INST_VAL] && !cs1[`RISCV_INST_MSG_J_EN] && cs1[`RISCV_INST_MSG_BR_SEL] == br_none && cs1[`RISCV_INST_MSG_MEM_REQ] == nr && !cs1[`RISCV_INST_MSG_MULDIV_EN] && !cs1[`RISCV_INST_MSG_CSR_WEN]; // check if the second instruction is a simple ALU instruction that is not a jump, branch, memory access, or multiply/divide
 
-    wire inst1_dep_on_inst0_Dhl = (inst0_writes_rd_Dhl && ((inst0_rd_Dhl == inst1_rs1_Dhl) || (inst0_rd_Dhl == inst1_rs2_Dhl))); // check if the second instruction depends on the first instruction's destination register
+    wire inst1_dep_on_inst0_Dhl = (inst0_writes_rd_Dhl && ((cs1[`RISCV_INST_MSG_RS1_EN] && inst0_rd_Dhl == inst1_rs1_Dhl) || (cs1[`RISCV_INST_MSG_RS2_EN] && inst0_rd_Dhl == inst1_rs2_Dhl))); // check if the second instruction depends on the first instruction's destination register
                             // (inst1_writes_rd_Dhl && ((inst1_rd_Dhl == inst0_rs1_Dhl) || (inst1_rd_Dhl == inst0_rs2_Dhl)));   // also check if the first instruction depends on the second instruction's destination register, which would cause a WAW or WAR hazard
 
     wire inst0_inst1_WAW_Dhl = inst0_writes_rd_Dhl && inst1_writes_rd_Dhl && (inst0_rd_Dhl == inst1_rd_Dhl); // check for WAW hazard between the two instructions
@@ -612,7 +612,6 @@ module riscv_CoreCtrl
 
     // should we save instruction for next cycle? happens when we have a valid pair, currently issuing first, first instruction not stalled, x0 not blocking progress, and we do not need to kill second stage because of redirect, will move to second stage
     wire hold_both_Dhl = inst_val_Dhl && !second_inst_cycle_issue_Dhl && !stall_X0hl && !stall_0_Dhl && !redirect_Dhl && !issue_both_Dhl;
-    // inst_val_Dhl && (steering_mux_sel_Dhl == 1'b0) && !current_stall_Dhl && !stall_X0hl && !redirect_Dhl;
     
 
     always @(posedge clk) begin
@@ -629,7 +628,6 @@ module riscv_CoreCtrl
 
 
   always @(*) begin
-    // TODO: UPDATE PART 2
     instA_Dhl = (steering_mux_sel_Dhl == 1'b0) ? ir0_Dhl : ir1_Dhl; // default move the instruction we want to issue into A
     instB_Dhl = issue_both_Dhl ? ((steering_mux_sel_Dhl == 1'b0) ? ir1_Dhl : ir0_Dhl) : 32'b0; // if we are issuing both, move the other instruction into B, otherwise set B to NOP
   end
@@ -651,8 +649,7 @@ module riscv_CoreCtrl
   wire [4:0] rsA1_addr_Dhl = (steering_mux_sel_Dhl == 1'b0) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
 
 
- // TODO: PART 2 UPDATE
-        assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
+    assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
     assign opB1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP1_SEL] : cs1[`RISCV_INST_MSG_OP1_SEL];
 
     wire [3:0] aluB_fn_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
@@ -701,8 +698,6 @@ wire issueA_Dhl = inst_val_Dhl && !stall_X0hl && !stallA_Dhl;
 
 // dummy signal for part b
 wire issueB_Dhl = issue_both_Dhl; 
-// TODO PART 2:
-//  wire issueB_Dhl = inst_val_Dhl && !stall_X0hl && !bubbleB_Dhl && !stallB_Dhl && !brj_taken_Dhl??
 
 wire issueA_wen_Dhl = issueA_Dhl && rfA_wen_Dhl && (rfA_waddr_Dhl != 5'd0);
 wire issueB_wen_Dhl = issueB_Dhl && rfB_wen_Dhl && (rfB_waddr_Dhl != 5'd0);
@@ -751,7 +746,7 @@ end
 
   assign opA0_byp_mux_sel_Dhl  
     = (!rsA0_en_Dhl || (rsA0_addr_Dhl == 5'd0) || !scoreboard[rsA0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
-    : (scoreboard[rsA0_addr_Dhl][5] == 1'b0) ? ( // TODO mux_sel??
+    : (scoreboard[rsA0_addr_Dhl][5] == 1'b0) ? ( 
         (scoreboard[rsA0_addr_Dhl][4]) ? am_AX0_byp
         : (scoreboard[rsA0_addr_Dhl][3]) ? am_AX1_byp
         : (scoreboard[rsA0_addr_Dhl][2]) ? am_AX2_byp
@@ -950,10 +945,6 @@ end
                        : ( bubble_sel_Dhl )  ? 1'b1
                        :                       1'bx;
 
-//   wire bubbleB_sel_Dhl = (squash_Dhl || stallB_Dhl || brj_taken_Dhl); // A may be a d-stage jump then we have to kill
-//   wire bubbleB_next_Dhl = ( !bubbleB_sel_Dhl ) ? bubbleB_Dhl
-//                        : ( bubbleB_sel_Dhl )  ? 1'b1
-//                        :                       1'bx;
     wire bubbleB_next_Dhl = !issueB_Dhl;
 
   //----------------------------------------------------------------------
@@ -987,7 +978,6 @@ end
   reg        bubble_X0hl;
   reg        bubbleB_X0hl;
 
-    // wire issue_Dhl = inst_val_Dhl && !stall_X0hl && !current_stall_Dhl;
     wire issue_Dhl = issueA_Dhl; // want true if there is at least one issue
   // Pipeline Controls
 
@@ -1097,7 +1087,6 @@ end
 
   // Stall in X if muldiv reponse is not valid and there was a valid request
 
-//   wire stall_muldiv_X0hl = 1'b0; //( muldivreq_val_X0hl && inst_val_X0hl && !muldivresp_val ); TOOO SEE IF NEEDED
 
   // Stall in X if imem is not ready
 
@@ -1648,11 +1637,7 @@ end
         num_cycles = num_cycles + 1;
 
         // Count instructions for every cycle not squashed or stalled
-
-        // FIXME: fix this when you can have at most two instructions issued per cycle! 
-        // TODO PART 2
-        num_inst <= num_inst + issueA_Dhl + issueB_Dhl; // TODO make sure correct
-
+        num_inst <= num_inst + issueA_Dhl + instB_val_X1hl; //always count the issueA_Dhl and then only count the b one once we know it has made it without being squashed
       end
 
     end

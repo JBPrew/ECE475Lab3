@@ -640,22 +640,6 @@ module riscv_CoreCtrl
     wire [4:0] rsB0_addr_Dhl = 5'd0;
     wire [4:0] rsB1_addr_Dhl = 5'd0;
 
- // TODO: PART 2 UPDATE
-//     assign opB0_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP0_SEL] : cs1[`RISCV_INST_MSG_OP0_SEL];
-//   assign opB1_mux_sel_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_OP1_SEL] : cs1[`RISCV_INST_MSG_OP1_SEL];
-
-//   wire [3:0] aluB_fn_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_ALU_FN] : cs1[`RISCV_INST_MSG_ALU_FN];
-
-//  wire rfB_wen_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WEN] : cs1[`RISCV_INST_MSG_RF_WEN];
-//   wire [4:0] rfB_waddr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RF_WADDR] : cs1[`RISCV_INST_MSG_RF_WADDR];
-
-
-//   wire rsB0_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS1_EN] : cs1[`RISCV_INST_MSG_RS1_EN];
-//   wire rsB1_en_Dhl = (steering_mux_sel_Dhl == 1'b1) ? cs0[`RISCV_INST_MSG_RS2_EN] : cs1[`RISCV_INST_MSG_RS2_EN];
-
-//     wire [4:0] rsB0_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs1_Dhl : inst1_rs1_Dhl;
-//   wire [4:0] rsB1_addr_Dhl = (steering_mux_sel_Dhl == 1'b1) ? inst0_rs2_Dhl : inst1_rs2_Dhl;
-
 
   wire [4:0] rs10_addr_Dhl  = inst0_rs1_Dhl;
   wire [4:0] rs20_addr_Dhl  = inst0_rs2_Dhl;
@@ -692,8 +676,6 @@ wire issueA_Dhl = inst_val_Dhl && !stall_X0hl && !stallA_Dhl;
 
 // dummy signal for part b
 wire issueB_Dhl = 1'b0; 
-// TODO PART 2:
-//  wire issueB_Dhl = inst_val_Dhl && !stall_X0hl && !bubbleB_Dhl && !stallB_Dhl && !brj_taken_Dhl??
 
 wire issueA_wen_Dhl = issueA_Dhl && rfA_wen_Dhl && (rfA_waddr_Dhl != 5'd0);
 wire issueB_wen_Dhl = issueB_Dhl && rfB_wen_Dhl && (rfB_waddr_Dhl != 5'd0);
@@ -723,21 +705,6 @@ always @ (posedge clk) begin
         sb_stage_next = 5'b10000; // insert at X0
         sb_func_next  = 1'b0;     // produced by A
       end
-
-
-    // // TODO UPDATE PART 2
-    //   // younger overwrites older
-    //   // B wins over A if both issue same rd on same D->x0 , since B is younger necessarily with steering logic.
-
-    //   if ( issueA_wen_Dhl && (i == rfA_waddr_Dhl) ) begin
-    //     sb_stage_next = 5'b10000; // insert at X0
-    //     sb_func_next  = 1'b0;     // produced by A
-    //   end
-    //     // b overrides A 
-    //   if ( issueB_wen_Dhl && (i == rfB_waddr_Dhl) ) begin
-    //     sb_stage_next = 5'b10000; // insert at X0
-    //     sb_func_next  = 1'b1;     // produced by B
-    //   end
 
       sb_pending_next = sb_stage_next[0] || sb_stage_next[1] || sb_stage_next[2] || sb_stage_next[3] || sb_stage_next[4]; // if any stage is pending, then we are pending
 
@@ -790,44 +757,6 @@ end
     // for part 1, just bypass from register file, so mux select is just the register file output or imm
     assign opB0_byp_mux_sel_Dhl = am_r0;
     assign opB1_byp_mux_sel_Dhl = bm_r1;
-
-    // TODO UPDATE FOR PART 2
-    // assign opB0_byp_mux_sel_Dhl  
-    // = (!rsB0_en_Dhl || (rsB0_addr_Dhl == 5'd0) || !scoreboard[rsB0_addr_Dhl][6]) ? am_r0 // check to see if bypass is valid, if not select r0
-    //     : (scoreboard[rsB0_addr_Dhl][5] == 1'b0) ? (
-    //         (scoreboard[rsB0_addr_Dhl][4]) ? am_AX0_byp
-    //         : (scoreboard[rsB0_addr_Dhl][3]) ? am_AX1_byp
-    //         : (scoreboard[rsB0_addr_Dhl][2]) ? am_AX2_byp
-    //         : (scoreboard[rsB0_addr_Dhl][1]) ? am_AX3_byp
-    //         : (scoreboard[rsB0_addr_Dhl][0])  ? am_AW_byp
-    //         : am_r0
-    //     ) : (
-    //         (scoreboard[rsB0_addr_Dhl][4]) ? am_BX0_byp
-    //         : (scoreboard[rsB0_addr_Dhl][3]) ? am_BX1_byp
-    //         : (scoreboard[rsB0_addr_Dhl][2]) ? am_BX2_byp
-    //         : (scoreboard[rsB0_addr_Dhl][1]) ? am_BX3_byp
-    //         : (scoreboard[rsB0_addr_Dhl][0])  ? am_BW_byp
-    //         : am_r0
-    //     );
-
-    // assign opB1_byp_mux_sel_Dhl 
-    // = (!rsB1_en_Dhl || (rsB1_addr_Dhl == 5'd0) || !scoreboard[rsB1_addr_Dhl][6]) ? bm_r1 // check to see if bypass is valid, if not select r0
-    //     : (scoreboard[rsB1_addr_Dhl][5] == 1'b0) ? (
-    //         (scoreboard[rsB1_addr_Dhl][4]) ? bm_AX0_byp
-    //         : (scoreboard[rsB1_addr_Dhl][3]) ? bm_AX1_byp
-    //         : (scoreboard[rsB1_addr_Dhl][2]) ? bm_AX2_byp
-    //         : (scoreboard[rsB1_addr_Dhl][1]) ? bm_AX3_byp
-    //         : (scoreboard[rsB1_addr_Dhl][0])  ? bm_AW_byp
-    //         : bm_r1
-    //     ) : (
-    //         (scoreboard[rsB1_addr_Dhl][4]) ? bm_BX0_byp
-    //         : (scoreboard[rsB1_addr_Dhl][3]) ? bm_BX1_byp
-    //         : (scoreboard[rsB1_addr_Dhl][2]) ? bm_BX2_byp
-    //         : (scoreboard[rsB1_addr_Dhl][1]) ? bm_BX3_byp
-    //         : (scoreboard[rsB1_addr_Dhl][0])  ? bm_BW_byp
-    //         : bm_r1
-    //     );
-
 
 
   // Muldiv Function
@@ -1104,7 +1033,6 @@ end
 
   // Stall in X if muldiv reponse is not valid and there was a valid request
 
-//   wire stall_muldiv_X0hl = 1'b0; //( muldivreq_val_X0hl && inst_val_X0hl && !muldivresp_val ); TOOO SEE IF NEEDED
 
   // Stall in X if imem is not ready
 
@@ -1655,9 +1583,6 @@ end
         num_cycles = num_cycles + 1;
 
         // Count instructions for every cycle not squashed or stalled
-
-        // FIXME: fix this when you can have at most two instructions issued per cycle! 
-        // TODO PART 2
         if (issue_Dhl) begin
           num_inst = num_inst + 1;
         end
