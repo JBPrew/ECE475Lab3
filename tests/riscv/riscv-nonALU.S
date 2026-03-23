@@ -14,7 +14,9 @@
     beq x4, x5, TESTFAIL
     bne x4, x5, TEST2
 
+    TEST_CHECK_FAIL
     TEST_INSERT_NOPS(4)
+
 
 TEST2:
     li x4, 4
