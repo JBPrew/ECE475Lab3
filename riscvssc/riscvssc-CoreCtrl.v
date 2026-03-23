@@ -600,7 +600,8 @@ module riscv_CoreCtrl
 
     wire second_inst_cycle_issue_Dhl = hold_second_sel_Dhl; // did we wait a cycle to need ot issue second instruction
 
-    wire issue_both_Dhl = !second_inst_cycle_issue_Dhl && inst_val_Dhl && (inst0_simple_alu_Dhl || inst1_simple_alu_Dhl) && !inst1_dep_on_inst0_Dhl && !inst0_inst1_WAW_Dhl && !stall_X0hl && !stall_0_Dhl && !stall_1_Dhl; // we can only issue both instructions if we are not currently holding the second instruction for a future cycle, we have a valid pair of instructions, at least one of them is a simple ALU instruction, there are no true dependencies between the two instructions, and there are no WAW hazards between the two instructions
+    wire inst0_is_control_Dhl = cs0[`RISCV_INST_MSG_J_EN] || cs0[`RISCV_INST_MSG_BR_SEL] != br_none;
+    wire issue_both_Dhl = !second_inst_cycle_issue_Dhl && inst_val_Dhl && (inst0_simple_alu_Dhl || inst1_simple_alu_Dhl) && !inst0_is_control_Dhl && !inst1_dep_on_inst0_Dhl && !inst0_inst1_WAW_Dhl && !stall_X0hl && !stall_0_Dhl && !stall_1_Dhl; // we can only issue both instructions if we are not currently holding the second instruction for a future cycle, we have a valid pair of instructions, at least one of them is a simple ALU instruction, there are no true dependencies between the two instructions, and there are no WAW hazards between the two instructions
     wire swap_needed_Dhl = issue_both_Dhl && inst0_simple_alu_Dhl && !inst1_simple_alu_Dhl; // need a swap if inst0 is simple and inst1 is complex
     
     always @ (*) begin
