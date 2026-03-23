@@ -100,7 +100,7 @@ module riscv_CoreCtrl
 
   assign pc_mux_sel_Phl
     = brj_taken_X0hl    ? pm_b
-    : brj_taken_Dhl    ? pc_mux_sel_Dhl
+    : redirect_Dhl    ? pc_mux_sel_Dhl
     :                    pm_p;
 
   // Only send a valid imem request if not stalled
@@ -158,7 +158,7 @@ module riscv_CoreCtrl
   // instruction or if there was an exception in X stage
 
   wire squash_Fhl
-    = ( inst_val_Dhl && brj_taken_Dhl )
+    = redirect_Dhl
    || ( inst_val_X0hl && brj_taken_X0hl );
 
   // Stall in F if D is stalled
@@ -176,11 +176,11 @@ module riscv_CoreCtrl
   // Queue for instruction memory response
   //----------------------------------------------------------------------
 
-  wire imemresp0_queue_en_Fhl = ( stall_Dhl && imemresp0_val );
+  wire imemresp0_queue_en_Fhl = ( stall_Dhl && imemresp0_val);
   wire imemresp0_queue_val_next_Fhl
     = stall_Dhl && ( imemresp0_val || imemresp0_queue_val_Fhl );
 
-  wire imemresp1_queue_en_Fhl = ( stall_Dhl && imemresp1_val );
+  wire imemresp1_queue_en_Fhl = ( stall_Dhl && imemresp1_val);
   wire imemresp1_queue_val_next_Fhl
     = stall_Dhl && ( imemresp1_val || imemresp1_queue_val_Fhl );
 
@@ -610,15 +610,15 @@ module riscv_CoreCtrl
     wire current_stall_Dhl = (second_inst_cycle_issue_Dhl == 1'b0) ? stall_0_Dhl : stall_1_Dhl; // if we are issuing fresh batch, look at first instruction for stall, if we are holding second instruction, look at second instruction for stall
 
     // should we save instruction for next cycle? happens when we have a valid pair, currently issuing first, first instruction not stalled, x0 not blocking progress, and we do not need to kill second stage because of redirect, will move to second stage
-    wire hold_both_Dhl = inst_val_Dhl && !second_inst_cycle_issue_Dhl && !stall_X0hl && !stall_0_Dhl && !brj_taken_Dhl && !issue_both_Dhl;
-    // inst_val_Dhl && (steering_mux_sel_Dhl == 1'b0) && !current_stall_Dhl && !stall_X0hl && !brj_taken_Dhl;
+    wire hold_both_Dhl = inst_val_Dhl && !second_inst_cycle_issue_Dhl && !stall_X0hl && !stall_0_Dhl && !redirect_Dhl && !issue_both_Dhl;
+    // inst_val_Dhl && (steering_mux_sel_Dhl == 1'b0) && !current_stall_Dhl && !stall_X0hl && !redirect_Dhl;
     
 
     always @(posedge clk) begin
         if (reset) begin
             hold_second_sel_Dhl <= 1'b0; // reset to 0, meaning we will try to move the bottom instruction first
         end
-        else if (squash_Dhl || brj_taken_Dhl) begin 
+        else if (squash_Dhl || redirect_Dhl) begin 
             hold_second_sel_Dhl <= 1'b0; // if we need to squash the entire decode, we will start with the top instruction
         end
         else if (issueA_Dhl) begin // we have an instruction that actually issues
@@ -676,6 +676,7 @@ module riscv_CoreCtrl
   // Jump and Branch Controls
 
   wire       brj_taken_Dhl = ( inst_val_Dhl && ((steering_mux_sel_Dhl == 1'b0) ? cs0[`RISCV_INST_MSG_J_EN] : cs1[`RISCV_INST_MSG_J_EN]) );
+  wire redirect_Dhl = brj_taken_Dhl && issue_Dhl;
   wire [2:0] br_sel_Dhl    = (steering_mux_sel_Dhl == 1'b0)  ? cs0[`RISCV_INST_MSG_BR_SEL] : cs1[`RISCV_INST_MSG_BR_SEL];
 
   // PC Mux Select
