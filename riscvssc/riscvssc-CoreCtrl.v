@@ -887,27 +887,22 @@ end
               rs10_en_Dhl && rs10_addr_Dhl != 5'd0 && scoreboard[rs10_addr_Dhl][6] && !scoreboard[rs10_addr_Dhl][5] && ( 
               (scoreboard[rs10_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs10_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs10_addr_Dhl][4]) ||
-              (scoreboard[rs10_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs10_addr_Dhl][4:3]) ||
-              (scoreboard[rs10_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs10_addr_Dhl][4:2]) // Makes sure doesnt stall on old register value for WAW
+              (scoreboard[rs10_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs10_addr_Dhl][4:3]) // Makes sure doesnt stall on old register value for WAW
             ) ) || (
               // Hazard involving rs2
               rs20_en_Dhl && rs20_addr_Dhl != 5'd0 && scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
               (scoreboard[rs20_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs20_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs20_addr_Dhl][4]) ||
-              (scoreboard[rs20_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs20_addr_Dhl][4:3]) ||
-              (scoreboard[rs20_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs20_addr_Dhl][4:2]) ) ));
+              (scoreboard[rs20_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs20_addr_Dhl][4:3])  ) ));
 
   wire stall_0_load_use_Dhl =
     inst_val_Dhl && (  (
             // Hazard involving rs1
             rs10_en_Dhl && rs10_addr_Dhl != 5'd0 && scoreboard[rs10_addr_Dhl][6] && !scoreboard[rs10_addr_Dhl][5] && ( 
-            (scoreboard[rs10_addr_Dhl][4] && is_load_X0hl) ||
-            (scoreboard[rs10_addr_Dhl][3] && is_load_X1hl && !scoreboard[rs10_addr_Dhl][4])
-        ) ) || (
+            (scoreboard[rs10_addr_Dhl][4] && is_load_X0hl)) ) || (
             // Hazard involving rs2
             rs20_en_Dhl && rs20_addr_Dhl != 5'd0 && scoreboard[rs20_addr_Dhl][6] && !scoreboard[rs20_addr_Dhl][5] && (
-            (scoreboard[rs20_addr_Dhl][4] && is_load_X0hl) ||
-            (scoreboard[rs20_addr_Dhl][3] && is_load_X1hl) && !scoreboard[rs20_addr_Dhl][4]) ));
+            (scoreboard[rs20_addr_Dhl][4] && is_load_X0hl) ) ));
 
   wire stall_1_muldiv_use_Dhl =
     inst_val_Dhl && ((
@@ -915,28 +910,23 @@ end
               rs11_en_Dhl && rs11_addr_Dhl != 5'd0 && scoreboard[rs11_addr_Dhl][6] && !scoreboard[rs11_addr_Dhl][5] && ( 
               (scoreboard[rs11_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs11_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs11_addr_Dhl][4]) ||
-              (scoreboard[rs11_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs11_addr_Dhl][4:3]) ||
-              (scoreboard[rs11_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs11_addr_Dhl][4:2]) // Makes sure doesnt stall on old register value for WAW
-            ) ) || (
+              (scoreboard[rs11_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs11_addr_Dhl][4:3]))  
+              ) || (
               // Hazard involving rs2
               rs21_en_Dhl && rs21_addr_Dhl != 5'd0 && scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
               (scoreboard[rs21_addr_Dhl][4] && is_muldiv_X0hl) ||
               (scoreboard[rs21_addr_Dhl][3] && is_muldiv_X1hl && !scoreboard[rs21_addr_Dhl][4]) ||
-              (scoreboard[rs21_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs21_addr_Dhl][4:3]) ||
-              (scoreboard[rs21_addr_Dhl][1] && is_muldiv_X3hl && !scoreboard[rs21_addr_Dhl][4:2]) ) ));
+              (scoreboard[rs21_addr_Dhl][2] && is_muldiv_X2hl && !scoreboard[rs21_addr_Dhl][4:3])  ) ));
 
   wire stall_1_load_use_Dhl = 
-    inst_val_Dhl && ((  
+    inst_val_Dhl && ( 
     
               // Hazard involving rs1
               rs11_en_Dhl && rs11_addr_Dhl != 5'd0 && scoreboard[rs11_addr_Dhl][6] && !scoreboard[rs11_addr_Dhl][5] && ( 
-              (scoreboard[rs11_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs11_addr_Dhl][3] && is_load_X1hl && !scoreboard[rs11_addr_Dhl][4] )
-            ) ) || (
+              (scoreboard[rs11_addr_Dhl][4] && is_load_X0hl)  ) || (
               // Hazard involving rs2
               rs21_en_Dhl && rs21_addr_Dhl != 5'd0 && scoreboard[rs21_addr_Dhl][6] && !scoreboard[rs21_addr_Dhl][5] && (
-              (scoreboard[rs21_addr_Dhl][4] && is_load_X0hl) ||
-              (scoreboard[rs21_addr_Dhl][3] && is_load_X1hl && !scoreboard[rs21_addr_Dhl][4]) )) );
+              (scoreboard[rs21_addr_Dhl][4] && is_load_X0hl) )) );
 
 
   // Aggregate Stall Signal
